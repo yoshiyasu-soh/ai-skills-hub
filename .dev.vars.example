@@ -1,0 +1,3 @@
+# ローカル開発用。`worker/.dev.vars` にコピーして使用してください(Gitには含めないこと)。
+ENVIRONMENT=development
+DEV_BYPASS_EMAIL=you@example.com

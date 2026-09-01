@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-skills-hub",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2024-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // フロントエンド(Vite)のビルド成果物を静的配信し、/api/* だけ Worker で処理する
+  "assets": {
+    "directory": "./frontend/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-skills-hub-db",
+      // `npx wrangler d1 create ai-skills-hub-db` 実行後に払い出されるIDに置き換える
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "ASSETS_BUCKET",
+      "bucket_name": "ai-skills-hub-assets"
+    }
+  ],
+
+  "vars": {
+    // Cloudflare Zero Trust の Team domain (例: https://your-team.cloudflareaccess.com)
+    "ACCESS_TEAM_DOMAIN": "https://REPLACE_WITH_YOUR_TEAM.cloudflareaccess.com",
+    // Access アプリケーション作成時に払い出される Application Audience (AUD) Tag
+    "ACCESS_AUD": "REPLACE_WITH_ACCESS_APP_AUD_TAG",
+    // "production" 以外(例: "development")のときのみ DEV_BYPASS_EMAIL によるローカル認証バイパスを許可する
+    "ENVIRONMENT": "production"
+  }
+}
