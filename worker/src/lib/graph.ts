@@ -91,13 +91,15 @@ export async function fetchGraphProfile(env: Env, email: string): Promise<GraphP
 
   // 個人のMicrosoftアカウント等で招待された「ゲストユーザー」は userPrincipalName が
   // "xxx_hotmail.com#EXT#@tenant.onmicrosoft.com" のような形式になり email と一致しないため、
-  // mail 属性でのフィルタ検索にフォールバックする。
+  // mail / otherMails 属性でのフィルタ検索にフォールバックする。
+  // otherMails は複数値プロパティへの any() を使うため ConsistencyLevel: eventual が必要。
   const filterValue = email.replace(/'/g, "''");
-  const searchUrl = `https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(
-    `mail eq '${filterValue}'`,
-  )}&$select=${SELECT_FIELDS}&$top=1`;
+  const filter = `mail eq '${filterValue}' or otherMails/any(m:m eq '${filterValue}')`;
+  const searchUrl = `https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(filter)}&$select=${SELECT_FIELDS}&$top=1&$count=true`;
 
-  const searchRes = await fetch(searchUrl, { headers: { Authorization: `Bearer ${token}` } });
+  const searchRes = await fetch(searchUrl, {
+    headers: { Authorization: `Bearer ${token}`, ConsistencyLevel: "eventual" },
+  });
   if (!searchRes.ok) {
     console.error("Graph user search failed:", searchRes.status, await searchRes.text().catch(() => ""));
     return null;
