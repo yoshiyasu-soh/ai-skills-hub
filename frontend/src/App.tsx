@@ -17,11 +17,22 @@ export default function App() {
   }
 
   if (error) {
+    const isGuestForbidden = error.includes("guest accounts are not allowed");
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
-        <p className="text-lg font-semibold text-red-600">認証情報の取得に失敗しました</p>
-        <p className="text-sm text-slate-500">{error}</p>
-        <p className="text-xs text-slate-400">Cloudflare Access 経由でアクセスしているかご確認ください。</p>
+        <p className="text-lg font-semibold text-red-600">
+          {isGuestForbidden ? "このアプリはご利用いただけません" : "認証情報の取得に失敗しました"}
+        </p>
+        {isGuestForbidden ? (
+          <p className="text-sm text-slate-500">
+            このアプリはメンバー(社員)アカウント専用です。ゲストアカウントでのご利用はできません。
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-slate-500">{error}</p>
+            <p className="text-xs text-slate-400">Cloudflare Access 経由でアクセスしているかご確認ください。</p>
+          </>
+        )}
       </div>
     );
   }

@@ -42,5 +42,9 @@
     "ENTRA_CLIENT_ID": "REPLACE_WITH_ENTRA_CLIENT_ID"
     // ENTRA_CLIENT_SECRET は機密情報のためここには書かず、以下のコマンドで別途設定する:
     //   npx wrangler secret put ENTRA_CLIENT_SECRET
+
+    // 任意: "true" にすると、Entra ID の userType が Member 以外(ゲスト等)のアカウントを拒否する。
+    // 上記の Microsoft Graph 連携が前提(未設定のままこれだけ true にすると全員が拒否される)。
+    // "RESTRICT_TO_MEMBERS": "true"
   }
 }

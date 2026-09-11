@@ -19,11 +19,11 @@ users.post("/:email/sync", async (c) => {
   const exists = await c.env.DB.prepare("SELECT email FROM users WHERE email = ?").bind(email).first();
   if (!exists) return c.json({ error: "not_found" }, 404);
 
-  const synced = await syncUserProfile(c.env, email);
+  const profile = await syncUserProfile(c.env, email);
 
   const row = await fetchUserProfileRow(c.env.DB, email);
   if (!row) return c.json({ error: "internal_error" }, 500);
-  return c.json({ user: toUserProfileDTO(row), synced });
+  return c.json({ user: toUserProfileDTO(row), synced: profile !== null });
 });
 
 export default users;

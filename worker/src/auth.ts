@@ -15,6 +15,7 @@ export async function authMiddleware(c: AppContext, next: Next) {
   const env = c.env;
   let email: string | undefined;
   let name: string | undefined;
+  let viaDevBypass = false;
 
   const token = c.req.header("Cf-Access-Jwt-Assertion");
   if (token) {
@@ -32,6 +33,7 @@ export async function authMiddleware(c: AppContext, next: Next) {
   if (!email && env.ENVIRONMENT !== "production" && env.DEV_BYPASS_EMAIL) {
     email = env.DEV_BYPASS_EMAIL;
     name = env.DEV_BYPASS_EMAIL.split("@")[0];
+    viaDevBypass = true;
   }
 
   if (!email) {
@@ -50,18 +52,29 @@ export async function authMiddleware(c: AppContext, next: Next) {
     .bind(email, displayName)
     .run();
 
-  const profileRow = await env.DB.prepare("SELECT profile_synced_at FROM users WHERE email = ?")
+  const profileRow = await env.DB.prepare("SELECT profile_synced_at, user_type FROM users WHERE email = ?")
     .bind(email)
-    .first<{ profile_synced_at: string | null }>();
+    .first<{ profile_synced_at: string | null; user_type: string | null }>();
+
+  let userType = profileRow?.user_type ?? null;
 
   if (!profileRow?.profile_synced_at) {
     // 初回は表示名等がすぐ反映されるよう、同期完了を待ってからレスポンスする
-    await syncUserProfile(env, email).catch((err) => console.error("initial Entra profile sync failed:", err));
+    const profile = await syncUserProfile(env, email).catch((err) => {
+      console.error("initial Entra profile sync failed:", err);
+      return null;
+    });
+    if (profile) userType = profile.userType;
   } else if (isProfileStale(profileRow.profile_synced_at)) {
-    // 同期済みならレスポンスはブロックせず、バックグラウンドで再同期する
+    // 同期済みならレスポンスはブロックせず、バックグラウンドで再同期する(userTypeは前回同期時点の値を使う)
     c.executionCtx.waitUntil(
       syncUserProfile(env, email).catch((err) => console.error("background Entra profile sync failed:", err)),
     );
+  }
+
+  // ローカル開発バイパス経由はEntra IDの実データが無いため、このチェックの対象外とする
+  if (!viaDevBypass && env.RESTRICT_TO_MEMBERS === "true" && userType !== "Member") {
+    return c.json({ error: "forbidden", message: "guest accounts are not allowed" }, 403);
   }
 
   c.set("user", { email, displayName });

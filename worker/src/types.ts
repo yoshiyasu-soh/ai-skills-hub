@@ -12,6 +12,9 @@ export interface Env {
   ENTRA_CLIENT_ID?: string;
   // 機密情報のため wrangler.jsonc の vars には書かず、`wrangler secret put` で設定する
   ENTRA_CLIENT_SECRET?: string;
+  // "true" にすると Entra ID の userType が "Member" 以外(Guest等)のユーザーを拒否する。
+  // Microsoft Graph 連携(ENTRA_TENANT_ID等)が未設定の場合、全員が拒否される点に注意。
+  RESTRICT_TO_MEMBERS?: string;
 }
 
 export interface AuthUser {
@@ -59,5 +62,6 @@ export interface UserProfileRow {
   company_name: string | null;
   department: string | null;
   employee_type: string | null;
+  user_type: string | null;
   profile_synced_at: string | null;
 }

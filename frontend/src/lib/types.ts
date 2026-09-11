@@ -49,5 +49,6 @@ export interface User {
   companyName: string | null;
   department: string | null;
   employeeType: string | null;
+  userType: string | null;
   profileSyncedAt: string | null;
 }

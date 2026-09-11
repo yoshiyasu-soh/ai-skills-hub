@@ -48,9 +48,11 @@ export interface GraphProfile {
   companyName: string | null;
   department: string | null;
   employeeType: string | null;
+  // Entra ID の userType ("Member" | "Guest")。RESTRICT_TO_MEMBERS で使用する。
+  userType: string | null;
 }
 
-const SELECT_FIELDS = "displayName,givenName,surname,jobTitle,companyName,department,employeeType";
+const SELECT_FIELDS = "displayName,givenName,surname,jobTitle,companyName,department,employeeType,userType";
 
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
@@ -65,6 +67,7 @@ function mapGraphUser(data: Record<string, unknown>): GraphProfile {
     companyName: asString(data.companyName),
     department: asString(data.department),
     employeeType: asString(data.employeeType),
+    userType: asString(data.userType),
   };
 }
 

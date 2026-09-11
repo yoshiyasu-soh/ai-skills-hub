@@ -138,6 +138,21 @@ npx wrangler secret put ENTRA_CLIENT_SECRET
 テナントIDとクライアントIDは機密情報ではないため、`wrangler.jsonc` の `vars` に直接書きます
 (手順7で他の値と合わせて設定します)。
 
+### 6-1. (任意) ゲストアカウントの利用を禁止する
+
+Microsoft Graph 連携(上記)を設定した上で、`wrangler.jsonc` の `vars` に以下を追加すると、
+Entra ID の `userType` が `Guest`(個人のMicrosoftアカウント等で招待されたユーザー)のアカウントを
+アプリから締め出せます。
+
+```jsonc
+"RESTRICT_TO_MEMBERS": "true"
+```
+
+**注意**: この設定はMicrosoft Graph連携が前提です。`ENTRA_TENANT_ID`等が未設定のままこれだけ
+`true` にすると、`userType` を誰の分も判定できず**全員がブロックされます**。有効にする場合は
+必ず Graph 連携もセットで設定し、デプロイ後に自分のアカウントでアクセスできることを確認してください。
+既定は未設定(=無効、ゲストも利用可)です。
+
 ## 7. wrangler.jsonc の最終確認
 
 以下のプレースホルダーをすべて実際の値に置き換えます:

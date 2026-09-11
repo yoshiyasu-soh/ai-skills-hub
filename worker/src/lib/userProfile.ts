@@ -1,4 +1,4 @@
-import { fetchGraphProfile } from "./graph";
+import { fetchGraphProfile, type GraphProfile } from "./graph";
 import type { Env, UserProfileRow } from "../types";
 
 const STALE_MS = 24 * 60 * 60 * 1000; // 24時間
@@ -12,6 +12,7 @@ export interface UserProfileDTO {
   companyName: string | null;
   department: string | null;
   employeeType: string | null;
+  userType: string | null;
   profileSyncedAt: string | null;
 }
 
@@ -25,12 +26,13 @@ export function toUserProfileDTO(row: UserProfileRow): UserProfileDTO {
     companyName: row.company_name,
     department: row.department,
     employeeType: row.employee_type,
+    userType: row.user_type,
     profileSyncedAt: row.profile_synced_at,
   };
 }
 
 export const USER_PROFILE_COLUMNS =
-  "email, display_name, given_name, surname, job_title, company_name, department, employee_type, profile_synced_at";
+  "email, display_name, given_name, surname, job_title, company_name, department, employee_type, user_type, profile_synced_at";
 
 export async function fetchUserProfileRow(db: D1Database, email: string): Promise<UserProfileRow | null> {
   return db
@@ -52,12 +54,13 @@ export function isProfileStale(syncedAt: string | null): boolean {
 
 /**
  * Microsoft Graph からプロフィールを取得し、取得できた項目のみD1へ反映する。
- * Graph未設定・権限未同意・対象ユーザーが見つからない場合は何もせず false を返す
+ * Graph未設定・権限未同意・対象ユーザーが見つからない場合は何もせず null を返す
  * (既存のフォールバック表示や前回の同期結果を維持する)。
+ * 呼び出し元(authMiddleware)が userType を即座に判定できるよう、取得した GraphProfile を返す。
  */
-export async function syncUserProfile(env: Env, email: string): Promise<boolean> {
+export async function syncUserProfile(env: Env, email: string): Promise<GraphProfile | null> {
   const profile = await fetchGraphProfile(env, email);
-  if (!profile) return false;
+  if (!profile) return null;
 
   await env.DB.prepare(
     `UPDATE users SET
@@ -68,6 +71,7 @@ export async function syncUserProfile(env: Env, email: string): Promise<boolean>
        company_name = ?,
        department = ?,
        employee_type = ?,
+       user_type = ?,
        profile_synced_at = datetime('now')
      WHERE email = ?`,
   )
@@ -79,9 +83,10 @@ export async function syncUserProfile(env: Env, email: string): Promise<boolean>
       profile.companyName,
       profile.department,
       profile.employeeType,
+      profile.userType,
       email,
     )
     .run();
 
-  return true;
+  return profile;
 }

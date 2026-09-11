@@ -78,6 +78,10 @@ export default function UserProfilePage() {
         <Field label="会社名" value={profile.companyName} />
         <Field label="部署" value={profile.department} />
         <Field label="従業員の種類" value={profile.employeeType} />
+        <Field
+          label="アカウント種別"
+          value={profile.userType === "Member" ? "メンバー" : profile.userType === "Guest" ? "ゲスト" : profile.userType}
+        />
       </dl>
 
       <p className="mt-2 text-xs text-slate-400">
