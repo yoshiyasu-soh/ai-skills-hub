@@ -74,11 +74,22 @@ export default function ItemDetailPage() {
     }
   }
 
-  async function handleDownloadClick() {
+  function handleDownloadClick() {
     if (!item) return;
-    // 実ダウンロードは <a href> のブラウザ標準遷移に任せる(カウントはサーバ側で加算される)。
-    // 表示上のカウントだけ楽観的に更新する。
-    setItem((prev) => (prev ? { ...prev, usageCount: prev.usageCount + 1 } : prev));
+    // 実ダウンロードは <a href> のブラウザ標準遷移に任せているため、JS側はこの時点で
+    // サーバーが実際にカウントしたか(投稿者本人・短時間の連打は加算されない)を知る手段が無い。
+    // ダウンロードリクエストがサーバーで完了する程度の時間を置いてから、実際の値を取得し直す。
+    const targetId = item.id;
+    setTimeout(() => {
+      api.items
+        .get(targetId)
+        .then((res) => {
+          setItem((prev) => (prev && prev.id === targetId ? { ...prev, usageCount: res.item.usageCount } : prev));
+        })
+        .catch(() => {
+          // 再取得に失敗しても表示中の値をそのまま維持する
+        });
+    }, 1000);
   }
 
   async function handleDelete() {
@@ -163,7 +174,7 @@ export default function ItemDetailPage() {
         {isSkill ? (
           <a
             href={api.items.downloadUrl(item.id)}
-            onClick={() => void handleDownloadClick()}
+            onClick={handleDownloadClick}
             className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
           >
             ダウンロード ({item.usageCount}件)
