@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import TagPicker from "../components/TagPicker";
 import { api } from "../lib/api";
+import { parseSkillMd } from "../lib/parseSkillMd";
 import type { ItemType, Tag } from "../lib/types";
 
 export default function PostItemPage() {
@@ -19,6 +20,7 @@ export default function PostItemPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
     api.tags
@@ -28,6 +30,40 @@ export default function PostItemPage() {
         /* タグ取得に失敗しても投稿自体は継続できる */
       });
   }, []);
+
+  async function handleFileChange(f: File | null) {
+    setFile(f);
+    setAutoFilled(false);
+
+    if (!f || !f.name.toLowerCase().endsWith(".md")) return;
+
+    try {
+      const text = await f.text();
+      const parsed = parseSkillMd(text);
+      let filled = false;
+
+      // 既に手入力された内容は上書きしない(空欄のみ自動入力)
+      if (parsed.title && !title.trim()) {
+        setTitle(parsed.title);
+        filled = true;
+      }
+      if (parsed.summary && !summary.trim()) {
+        setSummary(parsed.summary);
+        filled = true;
+      }
+      if (parsed.description && !description.trim()) {
+        setDescription(parsed.description);
+        filled = true;
+      }
+      if (parsed.body && !body.trim()) {
+        setBody(parsed.body);
+        filled = true;
+      }
+      setAutoFilled(filled);
+    } catch {
+      // 読み取り・解析に失敗しても手動入力にフォールバックするだけなので無視する
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,7 +78,7 @@ export default function PostItemPage() {
       return;
     }
     if (type === "skill" && !file) {
-      setError("スキル資産のZIPファイルを選択してください");
+      setError("スキル資産のファイル(.zip または SKILL.md)を選択してください");
       return;
     }
 
@@ -96,7 +132,7 @@ export default function PostItemPage() {
                   type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
                 }`}
               >
-                {v === "skill" ? "スキル(ZIP配布)" : "プロンプト(コピー用)"}
+                {v === "skill" ? "スキル(資産配布)" : "プロンプト(コピー用)"}
               </button>
             ))}
           </div>
@@ -148,14 +184,21 @@ export default function PostItemPage() {
         {type === "skill" ? (
           <>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">スキル資産(ZIP) *</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">スキル資産(.zip または SKILL.md) *</label>
               <input
                 type="file"
-                accept=".zip"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                accept=".zip,.md"
+                onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
                 className="w-full text-sm"
               />
-              <p className="mt-1 text-xs text-slate-400">最大25MBまで。npx skills add 互換の配布は将来対応予定です。</p>
+              <p className="mt-1 text-xs text-slate-400">
+                最大25MBまで。ZIP一式でもSKILL.md単体でも投稿できます。npx skills add 互換の配布は将来対応予定です。
+              </p>
+              {autoFilled && (
+                <p className="mt-1 text-xs text-emerald-600">
+                  SKILL.mdの内容からタイトル・概要等を自動入力しました(空欄だった項目のみ)。
+                </p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">使い方メモ(任意)</label>

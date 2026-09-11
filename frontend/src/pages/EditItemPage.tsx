@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TagPicker from "../components/TagPicker";
 import { api } from "../lib/api";
+import { parseSkillMd } from "../lib/parseSkillMd";
 import type { Item, Tag } from "../lib/types";
 
 export default function EditItemPage() {
@@ -23,6 +24,7 @@ export default function EditItemPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +47,40 @@ export default function EditItemPage() {
       .catch((err) => setLoadError(err instanceof Error ? err.message : "取得に失敗しました"))
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function handleFileChange(f: File | null) {
+    setFile(f);
+    setAutoFilled(false);
+
+    if (!f || !f.name.toLowerCase().endsWith(".md")) return;
+
+    try {
+      const text = await f.text();
+      const parsed = parseSkillMd(text);
+      let filled = false;
+
+      // 既に入力済みの内容は上書きしない(空欄のみ自動入力)
+      if (parsed.title && !title.trim()) {
+        setTitle(parsed.title);
+        filled = true;
+      }
+      if (parsed.summary && !summary.trim()) {
+        setSummary(parsed.summary);
+        filled = true;
+      }
+      if (parsed.description && !description.trim()) {
+        setDescription(parsed.description);
+        filled = true;
+      }
+      if (parsed.body && !body.trim()) {
+        setBody(parsed.body);
+        filled = true;
+      }
+      setAutoFilled(filled);
+    } catch {
+      // 読み取り・解析に失敗しても手動入力にフォールバックするだけなので無視する
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -147,15 +183,20 @@ export default function EditItemPage() {
           <>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                スキル資産(ZIP) — 差し替える場合のみ選択
+                スキル資産(.zip または SKILL.md) — 差し替える場合のみ選択
               </label>
               <input
                 type="file"
-                accept=".zip"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                accept=".zip,.md"
+                onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
                 className="w-full text-sm"
               />
               {item.fileName && <p className="mt-1 text-xs text-slate-400">現在のファイル: {item.fileName}</p>}
+              {autoFilled && (
+                <p className="mt-1 text-xs text-emerald-600">
+                  SKILL.mdの内容から空欄の項目を自動入力しました。
+                </p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">使い方メモ</label>

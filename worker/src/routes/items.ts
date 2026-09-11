@@ -8,9 +8,21 @@ type AppContext = Context<{ Bindings: Env; Variables: { user: AuthUser } }>;
 
 const items = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
 
-const MAX_ZIP_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_SKILL_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+
+// スキル資産として許可する拡張子。ZIP一式 or SKILL.md単体のどちらでも投稿できる。
+const ALLOWED_SKILL_EXTENSIONS = [".zip", ".md"];
 
 type Fields = Record<string, unknown>;
+
+function isAllowedSkillFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return ALLOWED_SKILL_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
+
+function contentTypeForFileName(fileName: string): string {
+  return fileName.toLowerCase().endsWith(".md") ? "text/markdown; charset=utf-8" : "application/zip";
+}
 
 async function readBody(c: AppContext): Promise<{ fields: Fields; file?: File }> {
   const contentType = c.req.header("content-type") ?? "";
@@ -133,7 +145,7 @@ items.post("/", async (c) => {
   if (!title) return c.json({ error: "title is required" }, 400);
   if (title.length > 200) return c.json({ error: "title is too long (max 200 chars)" }, 400);
   if (type === "prompt" && !bodyText) return c.json({ error: "body (prompt text) is required" }, 400);
-  if (type === "skill" && !file) return c.json({ error: "file (.zip) is required" }, 400);
+  if (type === "skill" && !file) return c.json({ error: "file (.zip or .md) is required" }, 400);
 
   const id = crypto.randomUUID();
   const slug = slugify(title);
@@ -143,14 +155,18 @@ items.post("/", async (c) => {
   let fileSize: number | null = null;
 
   if (type === "skill" && file) {
-    if (!file.name.toLowerCase().endsWith(".zip")) return c.json({ error: "file must be a .zip archive" }, 400);
-    if (file.size > MAX_ZIP_SIZE) return c.json({ error: `file too large (max ${MAX_ZIP_SIZE / 1024 / 1024}MB)` }, 400);
+    if (!isAllowedSkillFile(file.name)) {
+      return c.json({ error: "file must be a .zip archive or a SKILL.md (.md) file" }, 400);
+    }
+    if (file.size > MAX_SKILL_FILE_SIZE) {
+      return c.json({ error: `file too large (max ${MAX_SKILL_FILE_SIZE / 1024 / 1024}MB)` }, 400);
+    }
 
     r2Key = `skills/${id}/${file.name}`;
     fileName = file.name;
     fileSize = file.size;
     await c.env.ASSETS_BUCKET.put(r2Key, await file.arrayBuffer(), {
-      httpMetadata: { contentType: "application/zip" },
+      httpMetadata: { contentType: contentTypeForFileName(file.name) },
     });
   }
 
@@ -203,12 +219,16 @@ items.put("/:id", async (c) => {
   let fileSize = existing.file_size;
 
   if (existing.type === "skill" && file) {
-    if (!file.name.toLowerCase().endsWith(".zip")) return c.json({ error: "file must be a .zip archive" }, 400);
-    if (file.size > MAX_ZIP_SIZE) return c.json({ error: `file too large (max ${MAX_ZIP_SIZE / 1024 / 1024}MB)` }, 400);
+    if (!isAllowedSkillFile(file.name)) {
+      return c.json({ error: "file must be a .zip archive or a SKILL.md (.md) file" }, 400);
+    }
+    if (file.size > MAX_SKILL_FILE_SIZE) {
+      return c.json({ error: `file too large (max ${MAX_SKILL_FILE_SIZE / 1024 / 1024}MB)` }, 400);
+    }
 
     const newKey = `skills/${id}/${file.name}`;
     await c.env.ASSETS_BUCKET.put(newKey, await file.arrayBuffer(), {
-      httpMetadata: { contentType: "application/zip" },
+      httpMetadata: { contentType: contentTypeForFileName(file.name) },
     });
     if (existing.r2_key && existing.r2_key !== newKey) {
       await c.env.ASSETS_BUCKET.delete(existing.r2_key);
@@ -276,7 +296,7 @@ items.get("/:id/download", async (c) => {
   const fileName = item.file_name ?? "skill.zip";
   return new Response(obj.body, {
     headers: {
-      "Content-Type": "application/zip",
+      "Content-Type": contentTypeForFileName(fileName),
       "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`,
       "Content-Length": String(obj.size),
     },
