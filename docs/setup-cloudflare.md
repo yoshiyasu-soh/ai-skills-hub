@@ -15,8 +15,10 @@
 --------------------------------------------------
 [3] リポジトリを clone して npm install           ← ここから初めてローカル作業
 [4] D1 / R2 の作成                                ← ローカル(wrangler CLI)
-[5] wrangler.jsonc に値を埋める
-[6] デプロイ
+[5] R2 バケットの作成
+[6] (任意) Microsoft Graph連携のシークレット設定
+[7] wrangler.jsonc に値を埋める
+[8] デプロイ
 ```
 
 ## 前提
@@ -100,7 +102,8 @@ npx wrangler d1 create ai-skills-hub-db
 
 出力される `database_id` を `wrangler.jsonc` の `d1_databases[0].database_id` に貼り付けてください。
 
-マイグレーションを適用します(`migrations/0001_init.sql` がテーブル定義とデフォルトタグの投入を行います):
+マイグレーションを適用します(`migrations/` 配下のファイルがテーブル定義・デフォルトタグの投入・
+ユーザープロフィール用の列追加を行います):
 
 ```bash
 # ローカル動作確認用
@@ -119,7 +122,23 @@ npx wrangler r2 bucket create ai-skills-hub-assets
 `wrangler.jsonc` の `r2_buckets[0].bucket_name` と一致していることを確認してください
 (既定値のままなら変更不要です)。
 
-## 6. wrangler.jsonc の最終確認
+## 6. (任意) Microsoft Graph 連携の設定
+
+投稿者名などに Entra ID 登録の氏名・役職・部署等を表示したい場合のみ実施してください。
+未設定でもアプリは通常通り動作します(表示名がメールのユーザー名部分になるだけです)。
+
+`docs/setup-entra-id.md` の手順6で Application 権限 `User.Read.All` を追加・管理者同意した
+テナントID・クライアントID・クライアントシークレットを使います。
+
+```bash
+npx wrangler secret put ENTRA_CLIENT_SECRET
+# プロンプトが出るのでクライアントシークレットの値を貼り付けてEnter
+```
+
+テナントIDとクライアントIDは機密情報ではないため、`wrangler.jsonc` の `vars` に直接書きます
+(手順7で他の値と合わせて設定します)。
+
+## 7. wrangler.jsonc の最終確認
 
 以下のプレースホルダーをすべて実際の値に置き換えます:
 
@@ -127,9 +146,14 @@ npx wrangler r2 bucket create ai-skills-hub-assets
 "database_id": "REPLACE_WITH_D1_DATABASE_ID",             // 手順4で取得
 "ACCESS_TEAM_DOMAIN": "https://REPLACE_WITH_YOUR_TEAM.cloudflareaccess.com", // 手順0で決めたTeam domain
 "ACCESS_AUD": "REPLACE_WITH_ACCESS_APP_AUD_TAG",           // 手順2-2で取得したAUD Tag
+"ENTRA_TENANT_ID": "REPLACE_WITH_ENTRA_TENANT_ID",         // 手順6を行う場合のみ。ディレクトリ(テナント)ID
+"ENTRA_CLIENT_ID": "REPLACE_WITH_ENTRA_CLIENT_ID",         // 手順6を行う場合のみ。アプリケーション(クライアント)ID
 ```
 
-## 7. デプロイ
+手順6を行わない場合は `ENTRA_TENANT_ID` / `ENTRA_CLIENT_ID` の行を削除して構いません
+(未設定でもエラーにはなりません)。
+
+## 8. デプロイ
 
 ```bash
 npm run deploy
@@ -138,7 +162,7 @@ npm run deploy
 これはフロントエンドのビルド (`vite build` → `frontend/dist`) を行った上で
 `wrangler deploy` を実行し、Worker・静的アセット・D1/R2 バインディングを一括でデプロイします。
 
-## 8. カスタムドメインの割り当て
+## 9. カスタムドメインの割り当て
 
 「Workers & Pages」→ 対象 Worker →「Settings」→「Domains & Routes」から、
 手順2-2で Access Application に設定したホスト名を Worker のカスタムドメインとして追加してください。
@@ -146,12 +170,15 @@ Access はこのホスト名へのすべてのリクエストを検証し、認�
 `Cf-Access-Jwt-Assertion` ヘッダを付与して Worker まで転送します
 (Worker 側はこのヘッダの JWT を検証するのみで、ログイン処理自体は実装していません)。
 
-## 9. 動作確認
+## 10. 動作確認
 
 1. Access で許可したユーザーで対象ドメインにアクセスし、Entra ID の認証画面が出ることを確認する。
 2. 認証後にアプリ本体(一覧画面)が表示されることを確認する。
 3. スキルを1件投稿し、ダウンロードできること、DL数が増えることを確認する。
 4. プロンプトを1件投稿し、コピー・claude.ai遷移・お気に入り登録ができることを確認する。
+5. (手順6を行った場合)画面右上の自分の表示名をクリックし、Entra IDから同期された氏名・役職等が
+   表示されることを確認する。表示されない場合は「Entra IDと今すぐ同期」ボタンを押し、それでも
+   反映されない場合は管理者同意が正しく行われているか確認する。
 
 ## ローカル開発
 

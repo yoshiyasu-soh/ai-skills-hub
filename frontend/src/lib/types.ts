@@ -42,4 +42,11 @@ export interface Item {
 export interface User {
   email: string;
   displayName: string;
+  givenName: string | null;
+  surname: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  department: string | null;
+  employeeType: string | null;
+  profileSyncedAt: string | null;
 }

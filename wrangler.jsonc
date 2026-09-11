@@ -34,6 +34,13 @@
     // Access アプリケーション作成時に払い出される Application Audience (AUD) Tag
     "ACCESS_AUD": "REPLACE_WITH_ACCESS_APP_AUD_TAG",
     // "production" 以外(例: "development")のときのみ DEV_BYPASS_EMAIL によるローカル認証バイパスを許可する
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+
+    // 以下2つは Microsoft Graph でユーザープロフィール(氏名・役職等)を取得するための設定。
+    // 未設定でもアプリ自体は動作する(プロフィール同期が無効になるだけ)。詳細は docs/setup-entra-id.md 参照。
+    "ENTRA_TENANT_ID": "REPLACE_WITH_ENTRA_TENANT_ID",
+    "ENTRA_CLIENT_ID": "REPLACE_WITH_ENTRA_CLIENT_ID"
+    // ENTRA_CLIENT_SECRET は機密情報のためここには書かず、以下のコマンドで別途設定する:
+    //   npx wrangler secret put ENTRA_CLIENT_SECRET
   }
 }

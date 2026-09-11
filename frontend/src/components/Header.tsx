@@ -37,7 +37,9 @@ export default function Header() {
           </NavLink>
           {user && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="hidden sm:inline">{user.displayName}</span>
+              <NavLink to={`/users/${encodeURIComponent(user.email)}`} className="hidden hover:underline sm:inline">
+                {user.displayName}
+              </NavLink>
               <a
                 href="/cdn-cgi/access/logout"
                 className="text-xs text-slate-400 hover:text-slate-600 hover:underline"

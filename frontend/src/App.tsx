@@ -6,6 +6,7 @@ import HomePage from "./pages/HomePage";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import PostItemPage from "./pages/PostItemPage";
 import RankingPage from "./pages/RankingPage";
+import UserProfilePage from "./pages/UserProfilePage";
 import { useUser } from "./lib/UserContext";
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/post" element={<PostItemPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/ranking" element={<RankingPage />} />
+          <Route path="/users/:email" element={<UserProfilePage />} />
         </Routes>
       </main>
     </div>

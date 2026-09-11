@@ -105,6 +105,12 @@ export const api = {
         `/ranking?${buildQuery(params as Record<string, unknown>)}`,
       ),
   },
+
+  users: {
+    get: (email: string) => request<{ user: User }>(`/users/${encodeURIComponent(email)}`),
+    sync: (email: string) =>
+      request<{ user: User; synced: boolean }>(`/users/${encodeURIComponent(email)}/sync`, { method: "POST" }),
+  },
 };
 
 export { ApiError };

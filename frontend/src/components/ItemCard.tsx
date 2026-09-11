@@ -52,7 +52,13 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
       )}
 
       <div className="flex items-center justify-between text-xs text-slate-400">
-        <span>{item.authorName}</span>
+        <Link
+          to={`/users/${encodeURIComponent(item.authorEmail)}`}
+          onClick={(e) => e.stopPropagation()}
+          className="hover:underline"
+        >
+          {item.authorName}
+        </Link>
         <span>
           {item.periodCount !== undefined
             ? `${item.periodCount}件 (期間内)`

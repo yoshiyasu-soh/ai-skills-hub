@@ -5,6 +5,7 @@ import itemsRoute from "./routes/items";
 import meRoute from "./routes/me";
 import rankingRoute from "./routes/ranking";
 import tagsRoute from "./routes/tags";
+import usersRoute from "./routes/users";
 import type { AuthUser, Env } from "./types";
 
 const app = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>();
@@ -18,6 +19,7 @@ app.route("/api/tags", tagsRoute);
 app.route("/api/favorites", favoritesRoute);
 app.route("/api/ranking", rankingRoute);
 app.route("/api/me", meRoute);
+app.route("/api/users", usersRoute);
 
 app.onError((err, c) => {
   console.error(err);

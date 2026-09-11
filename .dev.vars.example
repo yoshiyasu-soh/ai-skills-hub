@@ -1,3 +1,10 @@
-# ローカル開発用。`worker/.dev.vars` にコピーして使用してください(Gitには含めないこと)。
+# ローカル開発用。このファイルをリポジトリ直下に `.dev.vars` としてコピーして使用してください
+# (Gitには含めないこと)。
 ENVIRONMENT=development
 DEV_BYPASS_EMAIL=you@example.com
+
+# 任意: Microsoft Graph によるユーザープロフィール同期をローカルでも試したい場合のみ設定。
+# 未設定でもアプリは問題なく動作します(プロフィール同期が無効になるだけ)。
+# ENTRA_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# ENTRA_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# ENTRA_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

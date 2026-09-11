@@ -130,7 +130,12 @@ export default function ItemDetailPage() {
 
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{item.title}</h1>
       <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
-        <span>投稿者: {item.authorName}</span>
+        <span>
+          投稿者:{" "}
+          <Link to={`/users/${encodeURIComponent(item.authorEmail)}`} className="hover:underline">
+            {item.authorName}
+          </Link>
+        </span>
         <span>バージョン: {item.version}</span>
         <span>更新: {new Date(item.updatedAt).toLocaleString("ja-JP")}</span>
       </div>

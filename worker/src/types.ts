@@ -6,6 +6,12 @@ export interface Env {
   ENVIRONMENT: string;
   // .dev.vars でのみ設定するローカル開発用バイパス(本番では未設定)
   DEV_BYPASS_EMAIL?: string;
+  // Microsoft Graph でユーザープロフィール(氏名・役職等)を取得するための設定。
+  // 未設定でもアプリ本体は動作する(プロフィール同期が無効になるだけ)。
+  ENTRA_TENANT_ID?: string;
+  ENTRA_CLIENT_ID?: string;
+  // 機密情報のため wrangler.jsonc の vars には書かず、`wrangler secret put` で設定する
+  ENTRA_CLIENT_SECRET?: string;
 }
 
 export interface AuthUser {
@@ -42,4 +48,16 @@ export interface TagRow {
   label: string;
   is_default: number;
   item_count?: number;
+}
+
+export interface UserProfileRow {
+  email: string;
+  display_name: string;
+  given_name: string | null;
+  surname: string | null;
+  job_title: string | null;
+  company_name: string | null;
+  department: string | null;
+  employee_type: string | null;
+  profile_synced_at: string | null;
 }
