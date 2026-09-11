@@ -13,6 +13,36 @@ const MAX_SKILL_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 // スキル資産として許可する拡張子。ZIP一式 or SKILL.md単体のどちらでも投稿できる。
 const ALLOWED_SKILL_EXTENSIONS = [".zip", ".md"];
 
+// この秒数以内に同じ人が同じ操作を繰り返しても、DL数/コピー数は1回分としてしかカウントしない
+const USAGE_DEDUPE_WINDOW_SECONDS = 60;
+
+/**
+ * DL数/コピー数を加算すべきかどうかを判定する。
+ * - 投稿者本人による実行はカウントしない(自分の投稿を試すたびに数字が伸びるのを防ぐ)
+ * - 同じ人・同じ項目・同じ種別の操作が直近 USAGE_DEDUPE_WINDOW_SECONDS 秒以内にあれば、連打とみなしカウントしない
+ */
+async function shouldCountUsage(
+  db: D1Database,
+  itemId: string,
+  userEmail: string,
+  authorEmail: string,
+  kind: "download" | "copy",
+): Promise<boolean> {
+  if (userEmail === authorEmail) return false;
+
+  const recent = await db
+    .prepare(
+      `SELECT id FROM usage_events
+       WHERE item_id = ? AND user_email = ? AND kind = ?
+         AND created_at >= datetime('now', ?)
+       LIMIT 1`,
+    )
+    .bind(itemId, userEmail, kind, `-${USAGE_DEDUPE_WINDOW_SECONDS} seconds`)
+    .first();
+
+  return !recent;
+}
+
 type Fields = Record<string, unknown>;
 
 function isAllowedSkillFile(fileName: string): boolean {
@@ -288,10 +318,12 @@ items.get("/:id/download", async (c) => {
   const obj = await c.env.ASSETS_BUCKET.get(item.r2_key);
   if (!obj) return c.json({ error: "file not found in storage" }, 404);
 
-  await c.env.DB.batch([
-    c.env.DB.prepare("INSERT INTO usage_events (item_id, user_email, kind) VALUES (?, ?, 'download')").bind(id, user.email),
-    c.env.DB.prepare("UPDATE items SET usage_count = usage_count + 1 WHERE id = ?").bind(id),
-  ]);
+  if (await shouldCountUsage(c.env.DB, id, user.email, item.author_email, "download")) {
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO usage_events (item_id, user_email, kind) VALUES (?, ?, 'download')").bind(id, user.email),
+      c.env.DB.prepare("UPDATE items SET usage_count = usage_count + 1 WHERE id = ?").bind(id),
+    ]);
+  }
 
   const fileName = item.file_name ?? "skill.zip";
   return new Response(obj.body, {
@@ -307,10 +339,14 @@ items.get("/:id/download", async (c) => {
 items.post("/:id/copy", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const item = await c.env.DB.prepare("SELECT id, usage_count FROM items WHERE id = ?")
+  const item = await c.env.DB.prepare("SELECT id, usage_count, author_email FROM items WHERE id = ?")
     .bind(id)
-    .first<{ id: string; usage_count: number }>();
+    .first<{ id: string; usage_count: number; author_email: string }>();
   if (!item) return c.json({ error: "not_found" }, 404);
+
+  if (!(await shouldCountUsage(c.env.DB, id, user.email, item.author_email, "copy"))) {
+    return c.json({ usageCount: item.usage_count });
+  }
 
   await c.env.DB.batch([
     c.env.DB.prepare("INSERT INTO usage_events (item_id, user_email, kind) VALUES (?, ?, 'copy')").bind(id, user.email),
