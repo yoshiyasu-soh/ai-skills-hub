@@ -230,6 +230,7 @@ export default function PostItemPage() {
             selected={selectedTagIds}
             onChange={setSelectedTagIds}
             onTagCreated={(tag) => setTags((prev) => [...prev, tag])}
+            onTagDeleted={(tagId) => setTags((prev) => prev.filter((t) => t.id !== tagId))}
           />
         </div>
 

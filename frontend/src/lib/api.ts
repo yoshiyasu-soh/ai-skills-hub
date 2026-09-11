@@ -70,6 +70,7 @@ export const api = {
     list: () => request<{ tags: Tag[] }>("/tags"),
     create: (name: string) =>
       request<{ tag: Tag }>("/tags", { method: "POST", body: JSON.stringify({ name }) }),
+    remove: (id: number) => request<{ ok: true }>(`/tags/${id}`, { method: "DELETE" }),
   },
 
   items: {

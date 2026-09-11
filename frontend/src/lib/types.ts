@@ -8,6 +8,7 @@ export interface Tag {
   label: string;
   is_default: number;
   item_count?: number;
+  isOwner: boolean;
 }
 
 export interface ItemTagRef {
