@@ -50,28 +50,13 @@ export interface GraphProfile {
   employeeType: string | null;
 }
 
-/**
- * Microsoft Graph (アプリ専用権限 User.Read.All) からユーザープロフィールを取得する。
- * 未設定・権限未同意・対象ユーザーが見つからない等の場合は null を返し、呼び出し元で
- * 既存のフォールバック表示(メールのユーザー名部分等)を継続できるようにする。
- */
-export async function fetchGraphProfile(env: Env, email: string): Promise<GraphProfile | null> {
-  const token = await getGraphToken(env);
-  if (!token) return null;
+const SELECT_FIELDS = "displayName,givenName,surname,jobTitle,companyName,department,employeeType";
 
-  const select = "displayName,givenName,surname,jobTitle,companyName,department,employeeType";
-  const url = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(email)}?$select=${select}`;
+function asString(v: unknown): string | null {
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
 
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    console.error("Graph user lookup failed:", res.status, await res.text().catch(() => ""));
-    return null;
-  }
-
-  const data = (await res.json()) as Record<string, unknown>;
-  const asString = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
-
+function mapGraphUser(data: Record<string, unknown>): GraphProfile {
   return {
     displayName: asString(data.displayName),
     givenName: asString(data.givenName),
@@ -81,4 +66,44 @@ export async function fetchGraphProfile(env: Env, email: string): Promise<GraphP
     department: asString(data.department),
     employeeType: asString(data.employeeType),
   };
+}
+
+/**
+ * Microsoft Graph (アプリ専用権限 User.Read.All) からユーザープロフィールを取得する。
+ * 未設定・権限未同意・対象ユーザーが見つからない等の場合は null を返し、呼び出し元で
+ * 既存のフォールバック表示(メールのユーザー名部分等)を継続できるようにする。
+ */
+export async function fetchGraphProfile(env: Env, email: string): Promise<GraphProfile | null> {
+  const token = await getGraphToken(env);
+  if (!token) return null;
+
+  // 社内メンバーは email === userPrincipalName であることが多いため、まず直接ルックアップを試す(高速)。
+  const directUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(email)}?$select=${SELECT_FIELDS}`;
+  const directRes = await fetch(directUrl, { headers: { Authorization: `Bearer ${token}` } });
+
+  if (directRes.ok) {
+    return mapGraphUser((await directRes.json()) as Record<string, unknown>);
+  }
+  if (directRes.status !== 404) {
+    console.error("Graph user lookup failed:", directRes.status, await directRes.text().catch(() => ""));
+    return null;
+  }
+
+  // 個人のMicrosoftアカウント等で招待された「ゲストユーザー」は userPrincipalName が
+  // "xxx_hotmail.com#EXT#@tenant.onmicrosoft.com" のような形式になり email と一致しないため、
+  // mail 属性でのフィルタ検索にフォールバックする。
+  const filterValue = email.replace(/'/g, "''");
+  const searchUrl = `https://graph.microsoft.com/v1.0/users?$filter=${encodeURIComponent(
+    `mail eq '${filterValue}'`,
+  )}&$select=${SELECT_FIELDS}&$top=1`;
+
+  const searchRes = await fetch(searchUrl, { headers: { Authorization: `Bearer ${token}` } });
+  if (!searchRes.ok) {
+    console.error("Graph user search failed:", searchRes.status, await searchRes.text().catch(() => ""));
+    return null;
+  }
+
+  const searchData = (await searchRes.json()) as { value?: Record<string, unknown>[] };
+  const user = searchData.value?.[0];
+  return user ? mapGraphUser(user) : null;
 }
