@@ -31,6 +31,7 @@ export default function ItemDetailPage() {
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contentTab, setContentTab] = useState<"description" | "body">("description");
 
   useEffect(() => {
     if (!id) return;
@@ -212,19 +213,57 @@ export default function ItemDetailPage() {
             </div>
           )}
 
-          {item.description && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">説明</h2>
-              <MarkdownContent content={item.description} />
-            </section>
-          )}
+          {(() => {
+            const hasDescription = Boolean(item.description);
+            const hasBody = isSkill && Boolean(item.body);
+            if (!hasDescription && !hasBody) return null;
+            // 両方揃っている時だけユーザーの選択(contentTab)を使う。片方しか無い場合は常にそちらを表示する。
+            const activeTab = hasDescription && hasBody ? contentTab : hasDescription ? "description" : "body";
 
-          {isSkill && item.body && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">使い方メモ</h2>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.body}</p>
-            </section>
-          )}
+            return (
+              <section className="rounded-xl border border-slate-200 bg-white shadow-card">
+                <div className="flex border-b border-slate-200 px-2">
+                  {hasDescription && (
+                    <button
+                      type="button"
+                      onClick={() => setContentTab("description")}
+                      className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                        activeTab === "description"
+                          ? "border-b-2 border-brand-600 text-brand-700"
+                          : "border-b-2 border-transparent text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      説明
+                    </button>
+                  )}
+                  {hasBody && (
+                    <button
+                      type="button"
+                      onClick={() => setContentTab("body")}
+                      className={`px-3 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                        activeTab === "body"
+                          ? "border-b-2 border-brand-600 text-brand-700"
+                          : "border-b-2 border-transparent text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      使い方メモ
+                    </button>
+                  )}
+                </div>
+                <div className="p-5">
+                  {hasDescription && activeTab === "description" && (
+                    <MarkdownContent
+                      content={item.description}
+                      className="prose-h1:text-base prose-h2:text-sm prose-h3:text-sm prose-headings:mt-4 prose-headings:mb-1.5 first:prose-headings:mt-0"
+                    />
+                  )}
+                  {hasBody && activeTab === "body" && (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.body}</p>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
           {!isSkill && (
             <section>
