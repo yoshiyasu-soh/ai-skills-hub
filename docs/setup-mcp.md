@@ -6,26 +6,44 @@ MCPクライアントから直接、投稿されているスキル・プロン�
 **現状のスコープ: 参照系(検索・取得)のみ**。投稿・編集・お気に入り・DL数カウント等の
 書き込み系操作は未対応です(今後の拡張候補。「今後の拡張」参照)。
 
+本手順は実際に Cloudflare Zero Trust ダッシュボードで設定した際のキャプチャをもとに、
+実機で確認できた内容として記載しています(旧版はダッシュボード文言を推測で記載していましたが、
+本版は実際の画面に基づいて書き直したものです)。
+
 ## アーキテクチャ
 
-既存の認証方式(Cloudflare Access + Entra ID)をそのまま流用しており、MCP専用の
-トークン発行・OAuthサーバーをWorker側に新たに実装してはいません。
+Worker側は既存の認証方式(Cloudflare Access + Entra ID)をそのまま利用しており、
+`/api/mcp` のコード自体に変更・追加のトークン発行ロジックはありません。
+MCPクライアントからのOAuth対応は、**Cloudflare Access の「MCP サーバー ポータル」機能**
+(Access コントロール › MCP ポータル、ベータ)を使って実現します。
 
 ```
 Claude Code / Cowork
-        │  MCPのOAuthフロー(ブラウザでEntra IDログイン)
+        │  ① MCPポータルへOAuth接続(ブラウザでEntra IDログイン)
         ▼
-Cloudflare Access (Entra ID SSO)  ← 既存の Self-hosted Application がそのままカバー
+MCPサーバーポータル (例: https://mcp.soh.jp)
+  = 専用の Access Application (マネージドOAuth 有効)
+        │  ② ポータル→バックエンドへ、OAuth認証方式で中継
+        ▼
+既存の Access Application (ai-skills-hub - Cloudflare Workers)
+  = サイト全体を保護しているアプリ。こちらも マネージドOAuth を有効化する必要がある
         │  Cf-Access-Jwt-Assertion ヘッダを付与して転送
         ▼
-Cloudflare Workers (Hono)
-        └─ /api/mcp ──▶ 既存の authMiddleware で認証 ──▶ 読み取り専用ツールを実行
+Cloudflare Workers (Hono) の /api/mcp
+        └─ 既存の authMiddleware で認証(実ユーザーのメールアドレスを取得)
+           ──▶ 読み取り専用ツールを実行
 ```
 
-`/api/mcp` は他の `/api/*` エンドポイントと同じ Hono ルーティング配下にあるため、
-`docs/setup-cloudflare.md` の手順2-2で作成した既存の Access Application(ドメイン全体をカバー)
-がそのまま `/api/mcp` にも適用されます。**新しい Access Application を作る必要はありません。**
-`wrangler.jsonc` の変更・新しい環境変数・KV/Durable Objectsの追加も不要です。
+ポイント:
+- **2段階の Access Application** が登場します。① MCPポータル自身のアプリ(新規作成、
+  カスタムドメイン必須)と、② 既存のサイト全体保護アプリ(`ai-skills-hub - Cloudflare Workers`)。
+  **両方でマネージドOAuthを有効化する必要があります**(片方だけでは動きません)。
+- Worker側のコード(`worker/src/lib/jwt.ts`)は JWT の `email` クレームを必須にしているため、
+  バックエンド側(②)の認証方式は「カスタムヘッダー(Service Token)」ではなく
+  **「OAuth」を選ぶ**必要があります。Service Tokenは実ユーザーのメールアドレスを持たない
+  ため、選んでしまうと401になるか、全MCP利用者が同一の見せかけの身元になってしまいます。
+- Claude Code / Cowork が実際に接続する先は **Worker の直URLではなく、MCPポータルの
+  カスタムドメイン**(例: `https://mcp.soh.jp`)です。
 
 ## 提供しているツール(読み取り専用)
 
@@ -39,52 +57,105 @@ Cloudflare Workers (Hono)
 投稿・お気に入り登録・DL数カウント等は行わないため、MCP経由でアイテムを閲覧しても
 一覧画面の利用数(users)やお気に入り数は変化しません。
 
-## Cloudflare Access 側の設定(要ダッシュボード作業)
+## Cloudflare Access 側の設定手順
 
-Claude Code / Cowork のようなMCPクライアントは、ブラウザ経由の通常ログインではなく
-OAuth 2.1(PKCE + Dynamic Client Registration)の認可コードフローで認証します。
-そのため Access アプリケーション側で、この方式に対応した動作(未認証時に
-`401` + `WWW-Authenticate` を返し、OAuthのメタデータ(`/.well-known/oauth-authorization-server` 等)
-を公開する)を有効にする必要があります。Cloudflare Zero Trust には
-**Access › AI Controls** 配下に MCP サーバー保護専用の設定があります。
+### 前提: 既存のサイト保護アプリでマネージドOAuthを有効化する
 
-> **注意**: 本セッションの実行環境ではネットワーク制限により
-> `developers.cloudflare.com` の該当ドキュメントページに直接アクセスできず、
-> ダッシュボードの正確なメニュー名・手順を一次情報で確認できませんでした。
-> 以下は一般的なOAuthプロバイダ化の手順として記載していますので、実際の画面の文言と
-> 異なる場合は Cloudflare Zero Trust ダッシュボード内の表記を優先してください。
-> 設定後に実際の画面のスクリーンショットを共有いただければ、この手順書を実機に合わせて
-> 更新します。
+1. Zero Trust ダッシュボード › **Access コントロール › アプリケーション** を開き、
+   `docs/setup-cloudflare.md` 手順2-2で作成した既存のアプリ(例: `ai-skills-hub - Cloudflare Workers`)
+   を選択する。
+2. 上部タブの **「追加設定」**(「アプリケーションの詳細」の隣)を開く。
+   **マネージドOAuthはここにあります**(「アプリケーションの詳細」タブを下までスクロールしても
+   出てきません)。
+3. 「マネージドOAuth」トグルを **オン** にして保存する。
+   - このWorkerは自前のOAuthサーバーや `WWW-Authenticate` ヘッダーを実装していないため、
+     有効化しても既存の動作(ブラウザSSO)と競合しません。
 
-想定される手順:
+### 手順1: MCPサーバーポータルを新規作成する
 
-1. Zero Trust ダッシュボードで **Access › Applications** を開き、`docs/setup-cloudflare.md`
-   手順2-2で作成した既存の Application(このサイト全体を保護しているもの)を確認する。
-2. **Access › AI Controls**(または同等の「MCP Server」向け設定)を開き、上記ドメインの
-   `/api/mcp` パスをMCPサーバーとして登録する。ここでこのパス宛のリクエストについて、
-   ブラウザ以外のクライアント(MCPクライアント)向けにOAuthベースの認証が有効になる。
-3. 許可するユーザーの条件(ポリシー)は、既存の Access Application のポリシーがそのまま
-   引き継がれる想定(=同じユーザーがWeb版・MCP版の両方にアクセス可能)。個別に絞りたい場合は
-   MCP用の設定内でポリシーを追加する。
+1. Zero Trust ダッシュボード › **Access コントロール › MCP ポータル**(ベータ)を開き、
+   「サーバー ポータルを追加」をクリックする。
+2. **基本情報**
+   - ポータル名: 例 `AI Skills Hub MCP`
+   - ポータルID: 自動入力のままでOK(例 `ai-skills-hub-mcp`)
+3. **カスタムドメイン**: サブドメイン(例 `mcp`)+ 既存ドメイン(例 `soh.jp`)を選択する。
+   `soh.jpのDNSレコードが作成されます` という表示の通り、DNSレコードは自動作成される。
+4. **Cloudflare Gatewayを経由してトラフィックをルーティングする**: オフのままでOK。
+5. **コードモード**(ベータ): 複数ツールをまとめて1回で呼ぶ機能。今回は不要なため
+   「オフ」または「オプトイン」(クライアントが要求した場合のみ有効)を選択。どちらでも問題ない。
+6. **Accessポリシー**: 「現在のポリシーを追加」から、既存アプリで使っているポリシー
+   (例 `outlook.com`)を選択する。新規に同じ条件のポリシーを作らず、既存ポリシーを
+   流用することで許可条件を一元管理できる。
+7. **マネージドOAuth**(ベータ)を **オン** にする。
+   - 「localhostクライアントを許可」「ループバッククライアントを許可」: オン
+     (Claude Code CLIのローカルOAuthコールバックに対応するため)
+   - 「許可されたリダイレクトURI」: 基本は空欄のままでOK。Claude Cowork(ブラウザ版)から
+     接続してリダイレクトURIエラーが出た場合は、ここにCowork側が提示するコールバックURLを
+     追加する。
+   - グラントセッション期間・アクセストークンの有効期間: 既定値のままでOK。
+8. 「サーバー ポータルを追加」をクリックして保存する。
+
+### 手順2: バックエンド(Worker)をMCPサーバーとして登録する
+
+ポータル保存後、続けて「MCP サーバーを追加する」から登録する(または後から
+MCPポータルの詳細画面 › 「MCP サーバー」タブから追加する)。
+
+1. **サーバー名**: 例 `AI Skills Hub`
+2. **HTTP URL**: このWorkerのMCPエンドポイントのフルURL。
+   ```
+   https://<Workerの公開ドメイン>/api/mcp
+   ```
+   (例: `https://ai-skills-hub.yoshiyasu.workers.dev/api/mcp`。独自ドメインを
+   割り当てている場合はそちらを使う)
+3. **サーバーID**: 空欄で自動生成されるものでOK。
+4. **Cloudflare Gatewayを経由してルーティング**: オフのままでOK。
+5. **認証の種類**: **「OAuth」を選択する**(デフォルト)。
+   - 「カスタムヘッダー」(Service Token等)は選ばないこと。前述の通り、Worker側が
+     `email` クレームを必須にしているため、Service Token経由では認証が通らないか、
+     全利用者が同一の身元として扱われてしまう。
+   - この選択が機能するには、前提の手順で **既存のサイト保護アプリ側にもマネージドOAuth
+     が有効になっている**必要がある。
+6. **Accessポリシー**: ここでも同じポリシー(例 `outlook.com`)を「現在のポリシーを追加」
+   から追加する。
+7. 「保存してサーバーに接続」をクリックする。
+
+### トラブルシューティング: 「サーバーの認証が失敗したか、中断されました」
+
+このエラーが出た場合:
+
+1. まず、前提の手順(既存のサイト保護アプリの「追加設定」タブでマネージドOAuthが
+   オンになっているか)を再確認する。
+2. Zero Trust ダッシュボード › Access コントロール › **アプリケーション**(または
+   AI Controls)› **MCP サーバー** タブを開き、該当のサーバーを選択 › 「編集」›
+   **「サーバーを認証」** を選択する。
+3. ブラウザ経由のEntra IDログイン画面が表示されるので、ログインして認可を完了させる。
 
 ## Claude Code から接続する
 
+Worker の直URLではなく、**MCPポータルのカスタムドメイン**を指定する。
+
 ```bash
-claude mcp add --transport http ai-skills-hub https://<公開ドメイン>/api/mcp
+claude mcp add --transport http ai-skills-hub https://mcp.soh.jp
 ```
 
-初回接続時にブラウザが開き、Entra ID のログイン画面(Access経由)が表示されます。
-認証後はトークンが自動的に保存・更新され、以後は再ログイン不要です。
+初回接続時にブラウザが開き、Entra ID のログイン画面(Access経由)が表示される。
+認証後はトークンが自動的に保存・更新され、以後は再ログイン不要。
 
 ## Claude Cowork から接続する
 
-Cowork のコネクタ設定画面で「カスタムMCPサーバーを追加」し、上記と同じURL
-(`https://<公開ドメイン>/api/mcp`)を指定してください。認証フローはClaude Codeと同様です。
+Cowork のコネクタ設定画面で「カスタムMCPサーバーを追加」し、同じくポータルのURL
+(`https://mcp.soh.jp`)を指定する。認証フローはClaude Codeと同様。
+
+> **既知の注意点**: claude.ai(ブラウザ/モバイル)のコネクタが、Cloudflare Accessの
+> マネージドOAuthで保護されたMCPポータルへの接続に失敗する一方、Claude Code(CLI)は
+> 同一URLに問題なく接続できる、という事例が報告されています。Coworkで接続エラーが出て
+> Claude Codeでは成功する場合は、クライアント側の既知の制約の可能性があるため、
+> エラーメッセージを共有してください。
 
 ## ローカルでの動作確認(参考)
 
 ローカル開発時は `DEV_BYPASS_EMAIL` による認証バイパスが有効なため、OAuth設定なしで
-MCPエンドポイントを直接叩けます(`npx wrangler dev` 起動後):
+MCPエンドポイントを直接叩ける(`npx wrangler dev` 起動後):
 
 ```bash
 # ツール一覧
