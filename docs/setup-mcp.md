@@ -6,9 +6,10 @@ MCPクライアントから直接、投稿されているスキル・プロン�
 **現状のスコープ: 参照系(検索・取得)のみ**。投稿・編集・お気に入り・DL数カウント等の
 書き込み系操作は未対応です(今後の拡張候補。「今後の拡張」参照)。
 
-本手順は実際に Cloudflare Zero Trust ダッシュボードで設定した際のキャプチャをもとに、
-実機で確認できた内容として記載しています(旧版はダッシュボード文言を推測で記載していましたが、
-本版は実際の画面に基づいて書き直したものです)。
+本手順は実際に構築・接続確認まで完了した際の記録です。**Cloudflare Access の
+「MCP サーバー ポータル」機能はベータ版であり、ダッシュボードだけでは完結しない
+既知の不具合が複数あります。** 本手順ではそれらの回避策(Cloudflare API での直接設定)も
+含めて記載しています。
 
 ## アーキテクチャ
 
@@ -21,9 +22,9 @@ MCPクライアントからのOAuth対応は、**Cloudflare Access の「MCP サ
 Claude Code / Cowork
         │  ① MCPポータルへOAuth接続(ブラウザでEntra IDログイン)
         ▼
-MCPサーバーポータル (例: https://mcp.soh.jp)
+MCPサーバーポータル (例: https://mcp.soh.jp/mcp) ★接続先は末尾 /mcp が必要
   = 専用の Access Application (マネージドOAuth 有効)
-        │  ② ポータル→バックエンドへ、OAuth認証方式で中継
+        │  ② ポータル→バックエンドへ、OAuth認証方式で中継(ユーザーの代理として)
         ▼
 既存の Access Application (ai-skills-hub - Cloudflare Workers)
   = サイト全体を保護しているアプリ。こちらも マネージドOAuth を有効化する必要がある
@@ -34,16 +35,15 @@ Cloudflare Workers (Hono) の /api/mcp
            ──▶ 読み取り専用ツールを実行
 ```
 
-ポイント:
-- **2段階の Access Application** が登場します。① MCPポータル自身のアプリ(新規作成、
-  カスタムドメイン必須)と、② 既存のサイト全体保護アプリ(`ai-skills-hub - Cloudflare Workers`)。
-  **両方でマネージドOAuthを有効化する必要があります**(片方だけでは動きません)。
-- Worker側のコード(`worker/src/lib/jwt.ts`)は JWT の `email` クレームを必須にしているため、
-  バックエンド側(②)の認証方式は「カスタムヘッダー(Service Token)」ではなく
-  **「OAuth」を選ぶ**必要があります。Service Tokenは実ユーザーのメールアドレスを持たない
-  ため、選んでしまうと401になるか、全MCP利用者が同一の見せかけの身元になってしまいます。
-- Claude Code / Cowork が実際に接続する先は **Worker の直URLではなく、MCPポータルの
-  カスタムドメイン**(例: `https://mcp.soh.jp`)です。
+Access内部では、実は**3つの Access Application** が関与します:
+
+| アプリ | 役割 | 作成方法 |
+|---|---|---|
+| `ai-skills-hub - Cloudflare Workers` | サイト全体を保護(既存) | 手動作成済み |
+| `AI Skills Hub MCP`(type: `mcp_portal`) | ポータル本体(`mcp.soh.jp`) | MCPポータル作成時に自動生成 |
+| `AI Skills Hub`(type: `mcp`) | 個別サーバーのリソース表現 | MCPサーバー登録時に自動生成、**ダッシュボードの「アプリケーション」一覧には出てこない** |
+
+3つ目の「`mcp` タイプ」アプリは隠れた存在で、これが今回の不具合の温床でした(詳細後述)。
 
 ## 提供しているツール(読み取り専用)
 
@@ -57,7 +57,7 @@ Cloudflare Workers (Hono) の /api/mcp
 投稿・お気に入り登録・DL数カウント等は行わないため、MCP経由でアイテムを閲覧しても
 一覧画面の利用数(users)やお気に入り数は変化しません。
 
-## Cloudflare Access 側の設定手順
+## セットアップ手順
 
 ### 前提: 既存のサイト保護アプリでマネージドOAuthを有効化する
 
@@ -75,82 +75,144 @@ Cloudflare Workers (Hono) の /api/mcp
 
 1. Zero Trust ダッシュボード › **Access コントロール › MCP ポータル**(ベータ)を開き、
    「サーバー ポータルを追加」をクリックする。
-2. **基本情報**
-   - ポータル名: 例 `AI Skills Hub MCP`
-   - ポータルID: 自動入力のままでOK(例 `ai-skills-hub-mcp`)
+2. **基本情報**: ポータル名(例 `AI Skills Hub MCP`)、ポータルIDは自動入力のままでOK。
 3. **カスタムドメイン**: サブドメイン(例 `mcp`)+ 既存ドメイン(例 `soh.jp`)を選択する。
-   `soh.jpのDNSレコードが作成されます` という表示の通り、DNSレコードは自動作成される。
-4. **Cloudflare Gatewayを経由してトラフィックをルーティングする**: オフのままでOK。
-5. **コードモード**(ベータ): 複数ツールをまとめて1回で呼ぶ機能。今回は不要なため
-   「オフ」または「オプトイン」(クライアントが要求した場合のみ有効)を選択。どちらでも問題ない。
-6. **Accessポリシー**: 「現在のポリシーを追加」から、既存アプリで使っているポリシー
-   (例 `outlook.com`)を選択する。新規に同じ条件のポリシーを作らず、既存ポリシーを
-   流用することで許可条件を一元管理できる。
-7. **マネージドOAuth**(ベータ)を **オン** にする。
-   - 「localhostクライアントを許可」「ループバッククライアントを許可」: オン
-     (Claude Code CLIのローカルOAuthコールバックに対応するため)
-   - 「許可されたリダイレクトURI」: 基本は空欄のままでOK。Claude Cowork(ブラウザ版)から
-     接続してリダイレクトURIエラーが出た場合は、ここにCowork側が提示するコールバックURLを
-     追加する。
-   - グラントセッション期間・アクセストークンの有効期間: 既定値のままでOK。
+   DNSレコードは自動作成される。
+4. **Cloudflare Gatewayを経由してルーティング**: オフのままでOK。
+5. **コードモード**(ベータ): 「オフ」または「オプトイン」。今回は不要なのでどちらでも良い。
+6. **Accessポリシー**: 「現在のポリシーを追加」から、既存アプリと同じポリシー(例 `outlook.com`)
+   を選択する(新規に同条件のポリシーを作らず、一元管理する)。
+7. **マネージドOAuth**を **オン** にする。「localhostクライアントを許可」
+   「ループバッククライアントを許可」もオンにする(Claude Code CLIのローカルコールバックに対応)。
 8. 「サーバー ポータルを追加」をクリックして保存する。
 
 ### 手順2: バックエンド(Worker)をMCPサーバーとして登録する
 
-ポータル保存後、続けて「MCP サーバーを追加する」から登録する(または後から
-MCPポータルの詳細画面 › 「MCP サーバー」タブから追加する)。
-
 1. **サーバー名**: 例 `AI Skills Hub`
-2. **HTTP URL**: このWorkerのMCPエンドポイントのフルURL。
-   ```
-   https://<Workerの公開ドメイン>/api/mcp
-   ```
-   (例: `https://ai-skills-hub.yoshiyasu.workers.dev/api/mcp`。独自ドメインを
-   割り当てている場合はそちらを使う)
-3. **サーバーID**: 空欄で自動生成されるものでOK。
-4. **Cloudflare Gatewayを経由してルーティング**: オフのままでOK。
-5. **認証の種類**: **「OAuth」を選択する**(デフォルト)。
-   - 「カスタムヘッダー」(Service Token等)は選ばないこと。前述の通り、Worker側が
-     `email` クレームを必須にしているため、Service Token経由では認証が通らないか、
-     全利用者が同一の身元として扱われてしまう。
-   - この選択が機能するには、前提の手順で **既存のサイト保護アプリ側にもマネージドOAuth
-     が有効になっている**必要がある。
-6. **Accessポリシー**: ここでも同じポリシー(例 `outlook.com`)を「現在のポリシーを追加」
-   から追加する。
-7. 「保存してサーバーに接続」をクリックする。
+2. **HTTP URL**: `https://<Workerの公開ドメイン>/api/mcp`
+   (例: `https://ai-skills-hub.yoshiyasu.workers.dev/api/mcp`)
+3. **認証の種類**: **「OAuth」を選択する**(「カスタムヘッダー」は選ばない。Worker側の
+   `authMiddleware` は JWT の `email` クレームを必須にしており、Service Token等の
+   カスタムヘッダー認証では実ユーザーのメールアドレスが得られず機能しない)。
+4. **Accessポリシー**: ここでも同じポリシーを追加する。
+5. 保存する。
 
-### トラブルシューティング: 「サーバーの認証が失敗したか、中断されました」
+ここまではダッシュボードの表示通りに進めれば問題なく完了します。**問題はこの後、
+実際にMCPクライアントを接続しようとした段階から発生します。**
 
-このエラーが出た場合:
+## 既知の不具合と回避策(ベータ版・要Cloudflare API操作)
 
-1. まず、前提の手順(既存のサイト保護アプリの「追加設定」タブでマネージドOAuthが
-   オンになっているか)を再確認する。
-2. Zero Trust ダッシュボード › Access コントロール › **アプリケーション**(または
-   AI Controls)› **MCP サーバー** タブを開き、該当のサーバーを選択 › 「編集」›
-   **「サーバーを認証」** を選択する。
-3. ブラウザ経由のEntra IDログイン画面が表示されるので、ログインして認可を完了させる。
+ダッシュボードの「サーバーを認証」ボタン(自動/DCRモードでの初回認証トリガー)は、
+**クリックしても実際には何のリクエストも送信されず、機能しません**(2026年9月時点)。
+また、自動的に発生するはずの動的クライアント登録(DCR)が、設定不足により失敗する
+経路がいくつかあります。以下、実際に踏んだ不具合と対処を順に示します。
+
+これらの操作には Cloudflare API トークン(`Access: Apps and Policies Write` 権限)が
+必要です。Claude Code / Cowork に Cloudflare 公式MCPサーバーを接続し、AI経由で
+実行することも可能です(本セットアップでもその方法で解決しました)。
+
+### 不具合1: 個別サーバー用の隠れたAccessアプリに oauth_configuration が無い
+
+MCPサーバーを登録すると、type: `mcp` の Access Application が自動生成されますが
+(ダッシュボードのアプリケーション一覧には表示されない)、**このアプリには
+`oauth_configuration` が一切設定されていません**。これがあらゆる認証エラーの土台になります。
+
+対処(API):
+
+```js
+// GET /accounts/{account_id}/access/apps で type: "mcp" のアプリのIDを特定した上で
+PUT /accounts/{account_id}/access/apps/{mcp型アプリのID}
+{
+  ...(既存の値をすべて含める),
+  "oauth_configuration": {
+    "enabled": true,
+    "dynamic_client_registration": {
+      "enabled": true,
+      "allowed_uris": ["https://<ポータルのドメイン>/servers-callback"],
+      "allow_any_on_localhost": true,
+      "allow_any_on_loopback": true
+    }
+  }
+}
+```
+
+同じ `allowed_uris` を、既存のバックエンドアプリ(`ai-skills-hub - Cloudflare Workers`)
+側にも設定する。`allow_any_on_localhost`/`allow_any_on_loopback` は **localhost/127.0.0.1
+宛のリダイレクトURIしか許可しない**ため、`https://<ポータル>/servers-callback` のような
+実ホスト名は `allowed_uris` に明示的に追加しないと `redirect_uri is not allowed by the
+account configuration` エラーになる。
+
+### 不具合2: バックエンドのOAuthクライアントは client_secret_basic でなければならない
+
+MCPサーバーの「認証」タブで「手動の資格情報」を使う場合(自動/DCRのボタンが機能しない
+ため、実質こちらしか選択肢がない)、**Cloudflare Access がポータル→バックエンド間の
+トークン交換を行う際、登録したクライアントの `token_endpoint_auth_method` に関わらず、
+常に HTTP Basic認証(`client_secret_basic`)でクライアントシークレットを送信する**。
+そのため、`client_secret_post`(または `none`)で登録したクライアントを設定すると、
+バックエンドの同意画面(Allow/Deny)までは進むものの、その先で必ず
+`Authorization failed: invalid client` になる。
+
+対処: 登録時に明示的に `client_secret_basic` を指定する。
+
+```bash
+curl -s -X POST https://<team-domain>.cloudflareaccess.com/cdn-cgi/access/oauth/registration \
+  -H "Content-Type: application/json" \
+  -d '{"redirect_uris":["https://<ポータルのドメイン>/servers-callback"],"client_name":"<任意>","token_endpoint_auth_method":"client_secret_basic","grant_types":["authorization_code","refresh_token"],"response_types":["code"]}'
+```
+
+返ってきた `client_id`・`client_secret` を、MCPサーバーの手動OAuth資格情報として設定する
+(API経由。ダッシュボードの「手動の資格情報」欄からも入力可能なはずだが、
+`config`(issuer/authorization_endpoint/token_endpoint/resource)を含めて送る必要が
+あるため、APIから直接送るのが確実):
+
+```js
+PUT /accounts/{account_id}/access/ai-controls/mcp/servers/{server_id}
+{
+  "name": "AI Skills Hub",
+  "client_secret": "<上記で取得したclient_secret>",
+  "auth_credentials": JSON.stringify({
+    "auth_mode": "manual",
+    "config": {
+      "issuer": "https://<team-domain>.cloudflareaccess.com",
+      "authorization_endpoint": "https://<team-domain>.cloudflareaccess.com/cdn-cgi/access/oauth/authorization",
+      "token_endpoint": "https://<team-domain>.cloudflareaccess.com/cdn-cgi/access/oauth/token",
+      "revocation_endpoint": "https://<team-domain>.cloudflareaccess.com/cdn-cgi/access/oauth/revoke",
+      "resource": "https://<Workerの公開ドメイン>/api/mcp"
+    },
+    "registration_info": {
+      "client_id": "<上記で取得したclient_id>",
+      "redirect_uris": ["https://<ポータルのドメイン>/servers-callback"]
+    }
+  })
+}
+```
+
+「アカウントの管理 › OAuth クライアント」から作成するOAuthクライアント機能は、
+**Cloudflare API への委任アクセス用の別システムであり、ここでは使えない**(登録しても
+`Unknown client ID` になる)。必ず `/cdn-cgi/access/oauth/registration` に対して
+直接登録すること。
+
+上記2点を修正すると、MCPサーバーのステータスが `status: "ready"` になり、
+`tools` 配列にツール一覧が入るようになる(`GET /accounts/{account_id}/access/ai-controls/mcp/servers/{id}` で確認可能)。
 
 ## Claude Code から接続する
 
-Worker の直URLではなく、**MCPポータルのカスタムドメイン**を指定する。
+**接続先URLは、ポータルのドメイン直下ではなく、末尾に `/mcp` を付けたパスです。**
 
 ```bash
-claude mcp add --transport http ai-skills-hub https://mcp.soh.jp
+claude mcp add --transport http ai-skills-hub https://mcp.soh.jp/mcp
 ```
 
-初回接続時にブラウザが開き、Entra ID のログイン画面(Access経由)が表示される。
-認証後はトークンが自動的に保存・更新され、以後は再ログイン不要。
+(`https://mcp.soh.jp` のみだと `MCP endpoint not found` エラーになる)
+
+初回接続時にブラウザが開き、Entra ID のログイン画面(Access経由)→バックエンドへの
+アクセス同意画面(Allow)の順で進む。完了後、Claude Code側で `/mcp` を実行し
+`Connected` と表示されれば成功。
 
 ## Claude Cowork から接続する
 
-Cowork のコネクタ設定画面で「カスタムMCPサーバーを追加」し、同じくポータルのURL
-(`https://mcp.soh.jp`)を指定する。認証フローはClaude Codeと同様。
-
-> **既知の注意点**: claude.ai(ブラウザ/モバイル)のコネクタが、Cloudflare Accessの
-> マネージドOAuthで保護されたMCPポータルへの接続に失敗する一方、Claude Code(CLI)は
-> 同一URLに問題なく接続できる、という事例が報告されています。Coworkで接続エラーが出て
-> Claude Codeでは成功する場合は、クライアント側の既知の制約の可能性があるため、
-> エラーメッセージを共有してください。
+Cowork のコネクタ設定画面で「カスタムMCPサーバーを追加」し、同じく
+`https://mcp.soh.jp/mcp` を指定する。認証フローはClaude Codeと同様(未検証)。
 
 ## ローカルでの動作確認(参考)
 
@@ -174,3 +236,6 @@ curl -X POST http://localhost:8787/api/mcp \
 - 投稿・編集・お気に入り登録・DL/コピーのカウント連携など、書き込み系ツールの追加
   (誤操作防止のため、確認ステップや権限スコープの設計が別途必要)
 - `list_ranking` など補助的な参照ツールの追加
+- Cloudflare側でベータ機能の不具合(「既知の不具合と回避策」参照)が修正された場合、
+  ダッシュボードの「自動(推奨)」モード + 「サーバーの認証」ボタンだけで完結するように
+  なる可能性がある。その際は本セクションの手動API操作は不要になる。
