@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import MarkdownEditor from "../components/MarkdownEditor";
 import TagPicker from "../components/TagPicker";
 import { BoxIcon, CheckIcon, InfoIcon, SparkleIcon, TagIcon } from "../components/icons";
 import { api } from "../lib/api";
@@ -185,12 +186,14 @@ export default function EditItemPage() {
             </div>
 
             <div>
-              <label className={labelClass}>詳細説明</label>
-              <textarea
+              <label className={labelClass}>
+                詳細説明 <span className="font-normal text-slate-400">(Markdown対応)</span>
+              </label>
+              <MarkdownEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 rows={5}
-                className={inputClass}
+                textareaClassName={inputClass}
               />
             </div>
 

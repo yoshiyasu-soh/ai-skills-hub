@@ -11,6 +11,7 @@ import {
   StarIcon,
   UserIcon,
 } from "../components/icons";
+import MarkdownContent from "../components/MarkdownContent";
 import { api } from "../lib/api";
 import { useToast } from "../lib/ToastContext";
 import type { Item } from "../lib/types";
@@ -214,7 +215,7 @@ export default function ItemDetailPage() {
           {item.description && (
             <section>
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">説明</h2>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{item.description}</p>
+              <MarkdownContent content={item.description} />
             </section>
           )}
 
