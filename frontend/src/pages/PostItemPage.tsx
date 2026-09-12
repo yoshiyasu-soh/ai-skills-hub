@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import TagPicker from "../components/TagPicker";
-import { BoxIcon, CheckIcon, SparkleIcon } from "../components/icons";
+import { BoxIcon, CheckIcon, InfoIcon, SparkleIcon, TagIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { parseSkillMd } from "../lib/parseSkillMd";
 import type { ItemType, Tag } from "../lib/types";
@@ -9,6 +9,13 @@ import type { ItemType, Tag } from "../lib/types";
 const inputClass =
   "w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100";
 const labelClass = "mb-1.5 block text-sm font-medium text-slate-700";
+
+const TIPS = [
+  "概要は100字以内で簡潔に(一覧カードにそのまま表示されます)",
+  "詳細説明には、何ができるか・どんな場面で使うかを具体的に書くと伝わりやすくなります",
+  "スキルはSKILL.md単体でも投稿できます(タイトル・概要が自動入力されます)",
+  "適切なタグを選ぶと、他の人が見つけやすくなります",
+];
 
 export default function PostItemPage() {
   const navigate = useNavigate();
@@ -124,7 +131,7 @@ export default function PostItemPage() {
   const accentBg = type === "skill" ? "bg-skill" : "bg-prompt";
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-[1280px]">
       <div className="mb-6 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${accentBg}`}>
           {type === "skill" ? <BoxIcon className="h-4.5 w-4.5" /> : <SparkleIcon className="h-4 w-4" />}
@@ -135,132 +142,153 @@ export default function PostItemPage() {
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => void handleSubmit(e)}
-        className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-card"
-      >
-        <div>
-          <label className={labelClass}>種別</label>
-          <div className="flex overflow-hidden rounded-lg border border-slate-200 w-fit">
-            {(["skill", "prompt"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setType(v)}
-                className={`px-4 py-1.5 text-sm font-medium transition-colors ${
-                  type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {v === "skill" ? "スキル(再利用可能な機能)" : "プロンプト(コピー用)"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClass}>タイトル *</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={200}
-            required
-            placeholder="例: PRレビューチェックリスト"
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>概要(一覧カードに表示)</label>
-          <input
-            type="text"
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            maxLength={200}
-            placeholder="どんな時に使えるか、一言で"
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>詳細説明</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={5}
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>バージョン</label>
-          <input
-            type="text"
-            value={version}
-            onChange={(e) => setVersion(e.target.value)}
-            className={`w-40 font-mono ${inputClass}`}
-          />
-        </div>
-
-        {type === "skill" ? (
-          <>
+      <form onSubmit={(e) => void handleSubmit(e)}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+          <div className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
             <div>
-              <label className={labelClass}>スキル資産(.zip または SKILL.md) *</label>
+              <label className={labelClass}>種別</label>
+              <div className="flex overflow-hidden rounded-lg border border-slate-200 w-fit">
+                {(["skill", "prompt"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setType(v)}
+                    className={`px-4 py-1.5 text-sm font-medium transition-colors ${
+                      type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {v === "skill" ? "スキル(再利用可能な機能)" : "プロンプト(コピー用)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>タイトル *</label>
               <input
-                type="file"
-                accept=".zip,.md"
-                onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
-                className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={200}
+                required
+                placeholder="例: PRレビューチェックリスト"
+                className={inputClass}
               />
-              <p className="mt-1.5 text-xs text-slate-400">
-                最大25MBまで。ZIP一式でもSKILL.md単体でも投稿できます。npx skills add 互換の配布は将来対応予定です。
-              </p>
-              {autoFilled && (
-                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-600">
-                  <CheckIcon className="h-3.5 w-3.5" />
-                  SKILL.mdの内容からタイトル・概要等を自動入力しました(空欄だった項目のみ)。
-                </p>
-              )}
             </div>
+
             <div>
-              <label className={labelClass}>使い方メモ(任意)</label>
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={inputClass} />
+              <label className={labelClass}>概要(一覧カードに表示)</label>
+              <input
+                type="text"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                maxLength={200}
+                placeholder="どんな時に使えるか、一言で"
+                className={inputClass}
+              />
             </div>
-          </>
-        ) : (
-          <div>
-            <label className={labelClass}>プロンプト本文 *</label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={8}
-              required
-              className={`font-mono ${inputClass}`}
-            />
+
+            <div>
+              <label className={labelClass}>詳細説明</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>バージョン</label>
+              <input
+                type="text"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                className={`w-40 font-mono ${inputClass}`}
+              />
+            </div>
+
+            {type === "skill" ? (
+              <>
+                <div>
+                  <label className={labelClass}>スキル資産(.zip または SKILL.md) *</label>
+                  <input
+                    type="file"
+                    accept=".zip,.md"
+                    onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
+                    className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                  />
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    最大25MBまで。ZIP一式でもSKILL.md単体でも投稿できます。npx skills add 互換の配布は将来対応予定です。
+                  </p>
+                  {autoFilled && (
+                    <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-600">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                      SKILL.mdの内容からタイトル・概要等を自動入力しました(空欄だった項目のみ)。
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className={labelClass}>使い方メモ(任意)</label>
+                  <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={inputClass} />
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className={labelClass}>プロンプト本文 *</label>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={8}
+                  required
+                  className={`font-mono ${inputClass}`}
+                />
+              </div>
+            )}
+
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <div className="flex justify-end gap-2 border-t border-slate-100 pt-5">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-md bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
+              >
+                {submitting ? "投稿中..." : "投稿する"}
+              </button>
+            </div>
           </div>
-        )}
 
-        <div>
-          <label className={labelClass}>タグ</label>
-          <TagPicker
-            tags={tags}
-            selected={selectedTagIds}
-            onChange={setSelectedTagIds}
-            onTagCreated={(tag) => setTags((prev) => [...prev, tag])}
-            onTagDeleted={(tagId) => setTags((prev) => prev.filter((t) => t.id !== tagId))}
-          />
-        </div>
+          <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <InfoIcon className="h-3.5 w-3.5" />
+                入力のヒント
+              </p>
+              <ul className="flex flex-col gap-2.5">
+                {TIPS.map((tip) => (
+                  <li key={tip} className="flex gap-2 text-xs leading-relaxed text-slate-600">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
-
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-5">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-md bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
-          >
-            {submitting ? "投稿中..." : "投稿する"}
-          </button>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+              <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                <TagIcon className="h-3.5 w-3.5" />
+                タグ
+              </p>
+              <TagPicker
+                tags={tags}
+                selected={selectedTagIds}
+                onChange={setSelectedTagIds}
+                onTagCreated={(tag) => setTags((prev) => [...prev, tag])}
+                onTagDeleted={(tagId) => setTags((prev) => prev.filter((t) => t.id !== tagId))}
+              />
+            </div>
+          </aside>
         </div>
       </form>
     </div>
