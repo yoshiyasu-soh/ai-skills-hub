@@ -78,7 +78,7 @@ export default function ItemDetailPage() {
   function handleDownloadClick() {
     if (!item) return;
     // 実ダウンロードは <a href> のブラウザ標準遷移に任せているため、JS側はこの時点で
-    // サーバーが実際にカウントしたか(投稿者本人・短時間の連打は加算されない)を知る手段が無い。
+    // サーバーが実際にカウントしたか(投稿者本人・2回目以降のダウンロードは加算されない)を知る手段が無い。
     // ダウンロードリクエストがサーバーで完了する程度の時間を置いてから、実際の値を取得し直す。
     const targetId = item.id;
     setTimeout(() => {

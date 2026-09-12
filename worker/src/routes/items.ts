@@ -14,13 +14,10 @@ const MAX_SKILL_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 // スキル資産として許可する拡張子。ZIP一式 or SKILL.md単体のどちらでも投稿できる。
 const ALLOWED_SKILL_EXTENSIONS = [".zip", ".md"];
 
-// この秒数以内に同じ人が同じ操作を繰り返しても、DL数/コピー数は1回分としてしかカウントしない
-const USAGE_DEDUPE_WINDOW_SECONDS = 60;
-
 /**
- * DL数/コピー数を加算すべきかどうかを判定する。
+ * DL数/コピー数を加算すべきかどうかを判定する(ユニークユーザー数としてカウントする)。
  * - 投稿者本人による実行はカウントしない(自分の投稿を試すたびに数字が伸びるのを防ぐ)
- * - 同じ人・同じ項目・同じ種別の操作が直近 USAGE_DEDUPE_WINDOW_SECONDS 秒以内にあれば、連打とみなしカウントしない
+ * - 同じ人・同じ項目・同じ種別の操作は、過去に一度でもあれば以後は何度実行してもカウントしない
  */
 async function shouldCountUsage(
   db: D1Database,
@@ -31,17 +28,12 @@ async function shouldCountUsage(
 ): Promise<boolean> {
   if (userEmail === authorEmail) return false;
 
-  const recent = await db
-    .prepare(
-      `SELECT id FROM usage_events
-       WHERE item_id = ? AND user_email = ? AND kind = ?
-         AND created_at >= datetime('now', ?)
-       LIMIT 1`,
-    )
-    .bind(itemId, userEmail, kind, `-${USAGE_DEDUPE_WINDOW_SECONDS} seconds`)
+  const existing = await db
+    .prepare(`SELECT id FROM usage_events WHERE item_id = ? AND user_email = ? AND kind = ? LIMIT 1`)
+    .bind(itemId, userEmail, kind)
     .first();
 
-  return !recent;
+  return !existing;
 }
 
 type Fields = Record<string, unknown>;
