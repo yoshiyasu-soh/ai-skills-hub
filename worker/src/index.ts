@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "./auth";
 import favoritesRoute from "./routes/favorites";
 import itemsRoute from "./routes/items";
+import mcpRoute from "./routes/mcp";
 import meRoute from "./routes/me";
 import notificationsRoute from "./routes/notifications";
 import rankingRoute from "./routes/ranking";
@@ -22,6 +23,7 @@ app.route("/api/ranking", rankingRoute);
 app.route("/api/me", meRoute);
 app.route("/api/users", usersRoute);
 app.route("/api/notifications", notificationsRoute);
+app.route("/api/mcp", mcpRoute);
 
 app.onError((err, c) => {
   console.error(err);

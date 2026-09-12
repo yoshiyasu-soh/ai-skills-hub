@@ -20,6 +20,8 @@ Entra ID (Azure AD) SSO を利用します。
 - ユーザープロフィール閲覧: 表示名・姓名・役職・会社名・部署・従業員の種類を、
   投稿者名などから誰でも閲覧可能。Microsoft Graph 連携時は Entra ID の情報を自動同期して表示
   (未連携時はメールのユーザー名部分にフォールバック)
+- MCP(Model Context Protocol)サーバー: `/api/mcp` から Claude Code / Cowork 等のMCPクライアントで
+  スキル・プロンプトを検索・参照可能(現状は参照系のみ。詳細は [`docs/setup-mcp.md`](docs/setup-mcp.md))
 
 ## アーキテクチャ
 
@@ -45,6 +47,7 @@ Cloudflare Workers (Hono)  ──/api/*──▶  D1 (メタデータ) / R2 (ス
 
 1. [`docs/setup-entra-id.md`](docs/setup-entra-id.md) — Entra ID 側でのアプリ登録
 2. [`docs/setup-cloudflare.md`](docs/setup-cloudflare.md) — D1/R2 作成、Access アプリ作成、デプロイ
+3. (任意) [`docs/setup-mcp.md`](docs/setup-mcp.md) — MCPサーバーとして利用する場合の設定
 
 ## ローカル開発
 

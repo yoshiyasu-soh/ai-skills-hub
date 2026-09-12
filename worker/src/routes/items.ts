@@ -1,9 +1,9 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { fetchItemRow, parseTagIds, toItemDTOs } from "../lib/items";
+import { fetchItemRow, parseTagIds, searchItems, toItemDTOs } from "../lib/items";
 import { slugify } from "../lib/slug";
 import { markItemSeen, markItemWatched } from "../lib/watches";
-import type { AuthUser, Env, ItemRow, SortOption } from "../types";
+import type { AuthUser, Env, SortOption } from "../types";
 
 type AppContext = Context<{ Bindings: Env; Variables: { user: AuthUser } }>;
 
@@ -88,75 +88,28 @@ async function applyTags(db: D1Database, itemId: string, tagIds: number[], repla
 items.get("/", async (c) => {
   const user = c.get("user");
   const typeParam = c.req.query("type");
-  const q = c.req.query("q")?.trim();
   const tagsParam = c.req.query("tags");
-  const sort = (c.req.query("sort") as SortOption) || "newest";
-  const page = Math.max(1, Number(c.req.query("page") ?? "1") || 1);
-  const pageSize = Math.min(50, Math.max(1, Number(c.req.query("pageSize") ?? "20") || 20));
-
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-
-  if (typeParam === "skill" || typeParam === "prompt") {
-    conditions.push("i.type = ?");
-    params.push(typeParam);
-  }
-
-  if (q) {
-    const like = `%${q.toLowerCase()}%`;
-    conditions.push("(LOWER(i.title) LIKE ? OR LOWER(i.summary) LIKE ? OR LOWER(i.description) LIKE ?)");
-    params.push(like, like, like);
-  }
-
   const authorEmailParam = c.req.query("authorEmail");
-  if (authorEmailParam) {
-    conditions.push("i.author_email = ?");
-    params.push(authorEmailParam === "me" ? user.email : authorEmailParam);
-  }
 
   const tagIds = (tagsParam ?? "")
     .split(",")
     .map((v) => Number(v.trim()))
     .filter((v) => Number.isFinite(v) && v > 0);
 
-  if (tagIds.length > 0) {
-    const placeholders = tagIds.map(() => "?").join(",");
-    conditions.push(
-      `i.id IN (SELECT item_id FROM item_tags WHERE tag_id IN (${placeholders}) GROUP BY item_id HAVING COUNT(DISTINCT tag_id) = ?)`,
-    );
-    params.push(...tagIds, tagIds.length);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const orderBy =
-    sort === "popular"
-      ? "i.usage_count DESC"
-      : sort === "favorites"
-        ? "i.favorite_count DESC"
-        : sort === "name"
-          ? "i.title COLLATE NOCASE ASC"
-          : sort === "updated"
-            ? "i.updated_at DESC"
-            : "i.created_at DESC";
-
-  const countRow = await c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM items i ${where}`)
-    .bind(...params)
-    .first<{ cnt: number }>();
-  const total = countRow?.cnt ?? 0;
-
-  const offset = (page - 1) * pageSize;
-  const { results } = await c.env.DB.prepare(
-    `SELECT i.*, u.display_name as author_display_name
-     FROM items i JOIN users u ON u.email = i.author_email
-     ${where}
-     ORDER BY ${orderBy}
-     LIMIT ? OFFSET ?`,
-  )
-    .bind(...params, pageSize, offset)
-    .all<ItemRow & { author_display_name: string }>();
-
-  const dtos = await toItemDTOs(c.env.DB, results ?? [], user.email);
-  return c.json({ items: dtos, total, page, pageSize });
+  const result = await searchItems(
+    c.env.DB,
+    {
+      type: typeParam === "skill" || typeParam === "prompt" ? typeParam : undefined,
+      q: c.req.query("q"),
+      tagIds,
+      authorEmail: authorEmailParam ? (authorEmailParam === "me" ? user.email : authorEmailParam) : undefined,
+      sort: (c.req.query("sort") as SortOption) || "newest",
+      page: Number(c.req.query("page") ?? "1"),
+      pageSize: Number(c.req.query("pageSize") ?? "20"),
+    },
+    user.email,
+  );
+  return c.json(result);
 });
 
 // ---- 新規投稿(スキル: multipart+zip / プロンプト: JSON) ----

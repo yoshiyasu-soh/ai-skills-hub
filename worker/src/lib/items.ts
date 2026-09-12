@@ -1,4 +1,4 @@
-import type { ItemRow } from "../types";
+import type { ItemRow, SortOption } from "../types";
 
 export interface ItemDTO {
   id: string;
@@ -94,6 +94,93 @@ export async function toItemDTOs(
     isOwner: r.author_email === viewerEmail,
     hasUpdate: lastSeenByItem.has(r.id) && lastSeenByItem.get(r.id) !== r.version,
   }));
+}
+
+export interface SearchItemsParams {
+  type?: "skill" | "prompt";
+  q?: string;
+  tagIds?: number[];
+  /** "me" ではなく、呼び出し側で解決済みの実メールアドレスを渡すこと */
+  authorEmail?: string;
+  sort?: SortOption;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * 一覧取得の絞り込み・ソート・ページングロジック本体。
+ * REST の GET /api/items と MCP の search_items ツールの両方から利用する。
+ */
+export async function searchItems(
+  db: D1Database,
+  params: SearchItemsParams,
+  viewerEmail: string,
+): Promise<{ items: ItemDTO[]; total: number; page: number; pageSize: number }> {
+  const page = Math.max(1, params.page ?? 1);
+  const pageSize = Math.min(50, Math.max(1, params.pageSize ?? 20));
+
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+
+  if (params.type === "skill" || params.type === "prompt") {
+    conditions.push("i.type = ?");
+    values.push(params.type);
+  }
+
+  const q = params.q?.trim();
+  if (q) {
+    const like = `%${q.toLowerCase()}%`;
+    conditions.push("(LOWER(i.title) LIKE ? OR LOWER(i.summary) LIKE ? OR LOWER(i.description) LIKE ?)");
+    values.push(like, like, like);
+  }
+
+  if (params.authorEmail) {
+    conditions.push("i.author_email = ?");
+    values.push(params.authorEmail);
+  }
+
+  const tagIds = (params.tagIds ?? []).filter((v) => Number.isFinite(v) && v > 0);
+  if (tagIds.length > 0) {
+    const placeholders = tagIds.map(() => "?").join(",");
+    conditions.push(
+      `i.id IN (SELECT item_id FROM item_tags WHERE tag_id IN (${placeholders}) GROUP BY item_id HAVING COUNT(DISTINCT tag_id) = ?)`,
+    );
+    values.push(...tagIds, tagIds.length);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const sort = params.sort ?? "newest";
+  const orderBy =
+    sort === "popular"
+      ? "i.usage_count DESC"
+      : sort === "favorites"
+        ? "i.favorite_count DESC"
+        : sort === "name"
+          ? "i.title COLLATE NOCASE ASC"
+          : sort === "updated"
+            ? "i.updated_at DESC"
+            : "i.created_at DESC";
+
+  const countRow = await db
+    .prepare(`SELECT COUNT(*) as cnt FROM items i ${where}`)
+    .bind(...values)
+    .first<{ cnt: number }>();
+  const total = countRow?.cnt ?? 0;
+
+  const offset = (page - 1) * pageSize;
+  const { results } = await db
+    .prepare(
+      `SELECT i.*, u.display_name as author_display_name
+       FROM items i JOIN users u ON u.email = i.author_email
+       ${where}
+       ORDER BY ${orderBy}
+       LIMIT ? OFFSET ?`,
+    )
+    .bind(...values, pageSize, offset)
+    .all<ItemRow & { author_display_name: string }>();
+
+  const items = await toItemDTOs(db, results ?? [], viewerEmail);
+  return { items, total, page, pageSize };
 }
 
 export async function fetchItemRow(db: D1Database, id: string): Promise<RowWithAuthor | null> {
