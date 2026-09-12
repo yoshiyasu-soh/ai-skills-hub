@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useUser } from "../lib/UserContext";
+import LogoMark from "./LogoMark";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-2 text-sm font-medium ${
@@ -13,7 +14,8 @@ export default function Header() {
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <NavLink to="/" className="text-lg font-bold text-slate-900">
+          <NavLink to="/" className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <LogoMark className="h-8 w-8 shrink-0" />
             AI Skills Hub
           </NavLink>
           <nav className="flex items-center gap-1">
