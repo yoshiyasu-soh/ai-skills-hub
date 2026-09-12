@@ -1,6 +1,6 @@
 # AI Skills Hub
 
-Claude Code のスキル・プロンプトを社内で共有するための、GitHub の超簡易版のようなサイトです。
+Claude Code のスキル・プロンプトを社内で共有するためのサイトです。
 Cloudflare Workers + D1 + R2 + React(Vite) で構築し、認証は Cloudflare Access 経由の
 Entra ID (Azure AD) SSO を利用します。
 
