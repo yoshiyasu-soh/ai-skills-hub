@@ -195,6 +195,35 @@ PUT /accounts/{account_id}/access/ai-controls/mcp/servers/{server_id}
 上記2点を修正すると、MCPサーバーのステータスが `status: "ready"` になり、
 `tools` 配列にツール一覧が入るようになる(`GET /accounts/{account_id}/access/ai-controls/mcp/servers/{id}` で確認可能)。
 
+### 不具合3: Claude Desktop / claude.ai / モバイル / Cowork のコールバックURLが未許可
+
+Claude Code(CLI)はローカルの `http://localhost:<ポート>/callback` を使うため
+`allow_any_on_localhost` でカバーされるが、**Claude Desktop・claude.ai(ブラウザ)・
+モバイルアプリ・Cowork は共通して固定のコールバックURL
+`https://claude.ai/api/mcp/auth_callback` を使う**。これも実ホスト名なので
+`allow_any_on_localhost`/`allow_any_on_loopback`ではカバーされず、
+**ポータル本体のAccessアプリ**(type: `mcp_portal`)側の `allowed_uris` に
+明示的に追加しないと、Claude Desktop側で「AI Skills Hubのサインインサービスに
+登録できませんでした」というエラーになる。
+
+対処(API):
+
+```js
+PUT /accounts/{account_id}/access/apps/{ポータル本体のAccessアプリのID}
+{
+  ...(既存の値をすべて含める),
+  "oauth_configuration": {
+    "enabled": true,
+    "dynamic_client_registration": {
+      "enabled": true,
+      "allowed_uris": ["https://claude.ai/api/mcp/auth_callback"],
+      "allow_any_on_localhost": true,
+      "allow_any_on_loopback": true
+    }
+  }
+}
+```
+
 ## Claude Code から接続する
 
 **接続先URLは、ポータルのドメイン直下ではなく、末尾に `/mcp` を付けたパスです。**
@@ -209,10 +238,12 @@ claude mcp add --transport http ai-skills-hub https://mcp.soh.jp/mcp
 アクセス同意画面(Allow)の順で進む。完了後、Claude Code側で `/mcp` を実行し
 `Connected` と表示されれば成功。
 
-## Claude Cowork から接続する
+## Claude Desktop / claude.ai / Cowork から接続する
 
-Cowork のコネクタ設定画面で「カスタムMCPサーバーを追加」し、同じく
-`https://mcp.soh.jp/mcp` を指定する。認証フローはClaude Codeと同様(未検証)。
+Claude Desktopの場合: 設定(Ctrl+, / Cmd+,)› Connectors › 画面下部の
+「Add custom connector」から、名前と `https://mcp.soh.jp/mcp` を入力して追加する。
+claude.ai(ブラウザ版)・モバイル・Coworkも、それぞれのコネクタ追加画面から同じURLを
+指定すれば同様に接続できる(「不具合3」の対処が完了している前提)。
 
 ## ローカルでの動作確認(参考)
 
