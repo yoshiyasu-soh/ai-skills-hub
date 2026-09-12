@@ -164,6 +164,28 @@ export function BarsIcon(props: IconProps) {
   );
 }
 
+export function PlugIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 2v5" />
+      <path d="M15 2v5" />
+      <path d="M7 7h10v3a5 5 0 0 1-5 5 5 5 0 0 1-5-5Z" />
+      <path d="M12 15v3" />
+      <path d="M9 21.5h6" />
+    </svg>
+  );
+}
+
+export function TerminalIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="m7 9 3.5 3L7 15" />
+      <path d="M13 15h4" />
+    </svg>
+  );
+}
+
 export function FileIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

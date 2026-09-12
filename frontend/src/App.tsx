@@ -6,6 +6,7 @@ import FavoritesPage from "./pages/FavoritesPage";
 import GuidePage from "./pages/GuidePage";
 import HomePage from "./pages/HomePage";
 import ItemDetailPage from "./pages/ItemDetailPage";
+import McpGuidePage from "./pages/McpGuidePage";
 import PostItemPage from "./pages/PostItemPage";
 import RankingPage from "./pages/RankingPage";
 import UserProfilePage from "./pages/UserProfilePage";
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/users/:email" element={<UserProfilePage />} />
           <Route path="/guide/skills" element={<GuidePage topic="skill" />} />
           <Route path="/guide/prompts" element={<GuidePage topic="prompt" />} />
+          <Route path="/guide/mcp" element={<McpGuidePage />} />
         </Routes>
       </main>
     </div>

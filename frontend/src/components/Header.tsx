@@ -29,6 +29,9 @@ export default function Header() {
             <NavLink to="/favorites" className={navLinkClass}>
               お気に入り
             </NavLink>
+            <NavLink to="/guide/mcp" className={navLinkClass}>
+              MCP連携
+            </NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-3">
