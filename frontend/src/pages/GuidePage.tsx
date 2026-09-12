@@ -41,7 +41,7 @@ export default function GuidePage({ topic }: GuidePageProps) {
   const points = isSkill ? SKILL_POINTS : PROMPT_POINTS;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <Link to="/" className="mb-5 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
         <ArrowLeftIcon className="h-4 w-4" />
         一覧に戻る

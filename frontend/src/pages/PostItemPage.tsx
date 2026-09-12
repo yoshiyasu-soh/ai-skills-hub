@@ -124,7 +124,7 @@ export default function PostItemPage() {
   const accentBg = type === "skill" ? "bg-skill" : "bg-prompt";
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-3xl">
       <div className="mb-6 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${accentBg}`}>
           {type === "skill" ? <BoxIcon className="h-4.5 w-4.5" /> : <SparkleIcon className="h-4 w-4" />}

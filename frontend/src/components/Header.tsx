@@ -13,7 +13,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2.5">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2.5 sm:px-6 lg:px-10">
         <div className="flex items-center gap-4 sm:gap-6">
           <NavLink to="/" className="flex items-center gap-2 text-[15px] font-bold tracking-tight text-slate-900">
             <LogoMark className="h-7 w-7 shrink-0" />

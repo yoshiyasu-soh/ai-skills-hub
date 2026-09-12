@@ -57,7 +57,7 @@ export default function UserProfilePage() {
   const isMember = profile.userType === "Member";
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div className="mx-auto max-w-2xl">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700">

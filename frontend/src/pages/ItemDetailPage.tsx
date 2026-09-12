@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeftIcon, BoxIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, FileIcon, SparkleIcon, StarIcon } from "../components/icons";
+import {
+  ArrowLeftIcon,
+  BoxIcon,
+  CopyIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  FileIcon,
+  SparkleIcon,
+  StarIcon,
+  UserIcon,
+} from "../components/icons";
 import { api } from "../lib/api";
 import { useToast } from "../lib/ToastContext";
 import type { Item } from "../lib/types";
@@ -114,7 +124,7 @@ export default function ItemDetailPage() {
   const accentBg = isSkill ? "bg-skill" : "bg-prompt";
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <Link to="/" className="mb-4 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
         <ArrowLeftIcon className="h-4 w-4" />
         一覧に戻る
@@ -156,6 +166,14 @@ export default function ItemDetailPage() {
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+          <span className="flex items-center gap-1 tabular-nums">
+            <UserIcon className="h-4 w-4 text-slate-400" />
+            {item.usageCount} users
+          </span>
+          <span className="flex items-center gap-1 tabular-nums">
+            <StarIcon filled={item.isFavorited} className={`h-4 w-4 ${item.isFavorited ? "text-amber-400" : "text-slate-300"}`} />
+            {item.favoriteCount}
+          </span>
           <Link
             to={`/users/${encodeURIComponent(item.authorEmail)}`}
             className="flex items-center gap-1.5 hover:underline"
@@ -193,7 +211,6 @@ export default function ItemDetailPage() {
             >
               <DownloadIcon className="h-4 w-4" />
               ダウンロード
-              <span className="tabular-nums opacity-80">({item.usageCount} users)</span>
             </a>
           ) : (
             <>
@@ -204,7 +221,6 @@ export default function ItemDetailPage() {
               >
                 <CopyIcon className="h-4 w-4" />
                 クリップボードにコピー
-                <span className="tabular-nums opacity-80">({item.usageCount} users)</span>
               </button>
               <button
                 type="button"
@@ -220,11 +236,11 @@ export default function ItemDetailPage() {
           <button
             type="button"
             onClick={() => void handleToggleFavorite()}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            aria-label="お気に入り切り替え"
+            title="お気に入り"
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-amber-50 hover:text-amber-500"
           >
-            <StarIcon filled={item.isFavorited} className={`h-4 w-4 ${item.isFavorited ? "text-amber-400" : "text-slate-300"}`} />
-            お気に入り
-            <span className="tabular-nums">({item.favoriteCount})</span>
+            <StarIcon filled={item.isFavorited} className={`h-4 w-4 ${item.isFavorited ? "text-amber-400" : ""}`} />
           </button>
         </div>
       </div>
