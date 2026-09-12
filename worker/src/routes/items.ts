@@ -116,6 +116,12 @@ items.get("/", async (c) => {
     params.push(like, like, like);
   }
 
+  const authorEmailParam = c.req.query("authorEmail");
+  if (authorEmailParam) {
+    conditions.push("i.author_email = ?");
+    params.push(authorEmailParam === "me" ? user.email : authorEmailParam);
+  }
+
   const tagIds = (tagsParam ?? "")
     .split(",")
     .map((v) => Number(v.trim()))
@@ -137,7 +143,9 @@ items.get("/", async (c) => {
         ? "i.favorite_count DESC"
         : sort === "name"
           ? "i.title COLLATE NOCASE ASC"
-          : "i.created_at DESC";
+          : sort === "updated"
+            ? "i.updated_at DESC"
+            : "i.created_at DESC";
 
   const countRow = await c.env.DB.prepare(`SELECT COUNT(*) as cnt FROM items i ${where}`)
     .bind(...params)

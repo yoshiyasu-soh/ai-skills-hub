@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useUser } from "../lib/UserContext";
 import LogoMark from "./LogoMark";
 import NotificationBell from "./NotificationBell";
@@ -10,6 +10,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function Header() {
   const { user } = useUser();
+  const location = useLocation();
+  const isMineActive = location.pathname === "/" && new URLSearchParams(location.search).get("mine") === "1";
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -29,6 +31,11 @@ export default function Header() {
             <NavLink to="/favorites" className={navLinkClass}>
               お気に入り
             </NavLink>
+            {user && (
+              <NavLink to="/?mine=1" className={navLinkClass({ isActive: isMineActive })}>
+                自分の投稿
+              </NavLink>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">

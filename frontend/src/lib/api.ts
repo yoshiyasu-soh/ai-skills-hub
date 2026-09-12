@@ -54,6 +54,7 @@ export interface ListItemsParams {
   sort?: SortOption;
   page?: number;
   pageSize?: number;
+  authorEmail?: string;
 }
 
 export interface ListItemsResult {

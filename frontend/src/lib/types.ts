@@ -1,5 +1,5 @@
 export type ItemType = "skill" | "prompt";
-export type SortOption = "newest" | "popular" | "favorites" | "name";
+export type SortOption = "newest" | "updated" | "popular" | "favorites" | "name";
 export type RankingPeriod = "all" | "7d" | "30d";
 
 export interface Tag {

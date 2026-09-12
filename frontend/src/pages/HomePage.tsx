@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ItemCard from "../components/ItemCard";
 import TagFilterBar from "../components/TagFilterBar";
 import { api } from "../lib/api";
@@ -6,6 +7,7 @@ import type { Item, SortOption, Tag } from "../lib/types";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "newest", label: "新着順" },
+  { value: "updated", label: "更新順" },
   { value: "popular", label: "利用数順(DL/コピー)" },
   { value: "favorites", label: "お気に入り数順" },
   { value: "name", label: "名前順" },
@@ -14,6 +16,9 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 const PAGE_SIZE = 20;
 
 export default function HomePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mine = searchParams.get("mine") === "1";
+
   const [type, setType] = useState<"all" | "skill" | "prompt">("all");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -21,6 +26,16 @@ export default function HomePage() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [sort, setSort] = useState<SortOption>("newest");
   const [page, setPage] = useState(1);
+
+  function toggleMine() {
+    const next = new URLSearchParams(searchParams);
+    if (mine) {
+      next.delete("mine");
+    } else {
+      next.set("mine", "1");
+    }
+    setSearchParams(next);
+  }
 
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
@@ -43,7 +58,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setPage(1);
-  }, [type, debouncedQ, selectedTagIds, sort]);
+  }, [type, debouncedQ, selectedTagIds, sort, mine]);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +72,7 @@ export default function HomePage() {
         sort,
         page,
         pageSize: PAGE_SIZE,
+        authorEmail: mine ? "me" : undefined,
       })
       .then((res) => {
         if (cancelled) return;
@@ -72,7 +88,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [type, debouncedQ, selectedTagIds, sort, page]);
+  }, [type, debouncedQ, selectedTagIds, sort, page, mine]);
 
   async function handleToggleFavorite(item: Item) {
     setItems((prev) =>
@@ -120,6 +136,16 @@ export default function HomePage() {
           ))}
         </div>
 
+        <button
+          type="button"
+          onClick={toggleMine}
+          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+            mine ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+          }`}
+        >
+          自分の投稿のみ
+        </button>
+
         <input
           type="search"
           value={q}
@@ -148,7 +174,9 @@ export default function HomePage() {
       {loading ? (
         <p className="text-sm text-slate-400">読み込み中...</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-400">該当する投稿が見つかりませんでした。</p>
+        <p className="text-sm text-slate-400">
+          {mine ? "まだ投稿がありません。" : "該当する投稿が見つかりませんでした。"}
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
