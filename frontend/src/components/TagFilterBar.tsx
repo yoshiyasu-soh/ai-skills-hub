@@ -28,8 +28,8 @@ export default function TagFilterBar({ tags, selected, onChange }: Props) {
             onClick={() => toggle(tag.id)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
               active
-                ? "border-indigo-600 bg-indigo-600 text-white"
-                : "border-slate-300 bg-white text-slate-600 hover:border-indigo-400"
+                ? "border-brand-600 bg-brand-600 text-white"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-brand-300 hover:bg-white"
             }`}
           >
             #{tag.label}

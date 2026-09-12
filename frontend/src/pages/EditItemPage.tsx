@@ -1,9 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TagPicker from "../components/TagPicker";
+import { BoxIcon, CheckIcon, SparkleIcon } from "../components/icons";
 import { api } from "../lib/api";
 import { parseSkillMd } from "../lib/parseSkillMd";
 import type { Item, Tag } from "../lib/types";
+
+const inputClass =
+  "w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100";
+const labelClass = "mb-1.5 block text-sm font-medium text-slate-700";
 
 export default function EditItemPage() {
   const { id } = useParams<{ id: string }>();
@@ -131,98 +136,111 @@ export default function EditItemPage() {
   if (loadError) return <p className="text-sm text-red-500">{loadError}</p>;
   if (!item) return null;
 
+  const isSkill = item.type === "skill";
+  const accentText = isSkill ? "text-skill" : "text-prompt";
+  const accentBg = isSkill ? "bg-skill" : "bg-prompt";
+
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-4 text-xl font-bold text-slate-900">編集: {item.title}</h1>
-
-      <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
+      <div className="mb-6 flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl text-white ${accentBg}`}>
+          {isSkill ? <BoxIcon className="h-4.5 w-4.5" /> : <SparkleIcon className="h-4 w-4" />}
+        </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">タイトル *</label>
+          <p className={`text-xs font-semibold uppercase tracking-wide ${accentText}`}>編集</p>
+          <h1 className="text-xl font-bold text-slate-900">{item.title}</h1>
+        </div>
+      </div>
+
+      <form
+        onSubmit={(e) => void handleSubmit(e)}
+        className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-card"
+      >
+        <div>
+          <label className={labelClass}>タイトル *</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
             required
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">概要</label>
+          <label className={labelClass}>概要</label>
           <input
             type="text"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             maxLength={200}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">詳細説明</label>
+          <label className={labelClass}>詳細説明</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={5}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">バージョン</label>
+          <label className={labelClass}>バージョン</label>
           <input
             type="text"
             value={version}
             onChange={(e) => setVersion(e.target.value)}
-            className="w-40 rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className={`w-40 font-mono ${inputClass}`}
           />
         </div>
 
-        {item.type === "skill" ? (
+        {isSkill ? (
           <>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                スキル資産(.zip または SKILL.md) — 差し替える場合のみ選択
-              </label>
+              <label className={labelClass}>スキル資産(.zip または SKILL.md) — 差し替える場合のみ選択</label>
               <input
                 type="file"
                 accept=".zip,.md"
                 onChange={(e) => void handleFileChange(e.target.files?.[0] ?? null)}
-                className="w-full text-sm"
+                className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200"
               />
-              {item.fileName && <p className="mt-1 text-xs text-slate-400">現在のファイル: {item.fileName}</p>}
+              {item.fileName && (
+                <p className="mt-1.5 text-xs text-slate-400">
+                  現在のファイル: <span className="font-mono">{item.fileName}</span>
+                </p>
+              )}
               {autoFilled && (
-                <p className="mt-1 text-xs text-emerald-600">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <CheckIcon className="h-3.5 w-3.5" />
                   SKILL.mdの内容から空欄の項目を自動入力しました。
                 </p>
               )}
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">使い方メモ</label>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={4}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              />
+              <label className={labelClass}>使い方メモ</label>
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} className={inputClass} />
             </div>
           </>
         ) : (
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">プロンプト本文 *</label>
+            <label className={labelClass}>プロンプト本文 *</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={8}
               required
-              className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm"
+              className={`font-mono ${inputClass}`}
             />
           </div>
         )}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">タグ</label>
+          <label className={labelClass}>タグ</label>
           <TagPicker
             tags={tags}
             selected={selectedTagIds}
@@ -234,11 +252,11 @@ export default function EditItemPage() {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-slate-100 pt-5">
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-md bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-md bg-brand-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-50"
           >
             {submitting ? "保存中..." : "保存する"}
           </button>

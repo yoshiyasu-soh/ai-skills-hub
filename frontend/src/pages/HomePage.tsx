@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ItemCard from "../components/ItemCard";
 import TagFilterBar from "../components/TagFilterBar";
+import { BoxIcon, ChevronRightIcon, SearchIcon, SparkleIcon } from "../components/icons";
 import { api } from "../lib/api";
 import type { Item, SortOption, Tag } from "../lib/types";
 
@@ -119,62 +120,106 @@ export default function HomePage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex overflow-hidden rounded-lg border border-slate-300">
-          {(["all", "skill", "prompt"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setType(v)}
-              className={`px-3 py-1.5 text-sm font-medium ${
-                type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {v === "all" ? "すべて" : v === "skill" ? "スキル" : "プロンプト"}
-            </button>
-          ))}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">みんなのAIスキル・プロンプトを見つけよう</h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            実務で使えるAIスキルやプロンプトを共有・発見できます。あなたの知識・ノウハウも、ぜひシェアしてください。
+          </p>
         </div>
-
-        <button
-          type="button"
-          onClick={toggleMine}
-          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-            mine ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
-          }`}
-        >
-          自分の投稿のみ
-        </button>
-
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="タイトル・説明文を検索"
-          className="min-w-[220px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
-        />
-
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortOption)}
-          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="grid shrink-0 grid-cols-2 gap-3 sm:w-96">
+          <Link
+            to="/guide/skills"
+            className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-card transition hover:border-skill/40 hover:shadow-card-hover"
+          >
+            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-skill/10 text-skill">
+              <BoxIcon className="h-4 w-4" />
+            </div>
+            <p className="flex items-center gap-1 text-sm font-semibold text-slate-800">
+              SKILLとは？
+              <ChevronRightIcon className="h-3.5 w-3.5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-skill" />
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-400">Claudeに特定の作業をさせるための再利用可能な機能。</p>
+          </Link>
+          <Link
+            to="/guide/prompts"
+            className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3.5 shadow-card transition hover:border-prompt/40 hover:shadow-card-hover"
+          >
+            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-prompt/10 text-prompt">
+              <SparkleIcon className="h-4 w-4" />
+            </div>
+            <p className="flex items-center gap-1 text-sm font-semibold text-slate-800">
+              PROMPTとは？
+              <ChevronRightIcon className="h-3.5 w-3.5 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-prompt" />
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-400">Claudeにそのままコピーして使える指示文。</p>
+          </Link>
+        </div>
       </div>
 
-      <TagFilterBar tags={tags} selected={selectedTagIds} onChange={setSelectedTagIds} />
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-card">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex overflow-hidden rounded-lg border border-slate-200">
+            {(["all", "skill", "prompt"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setType(v)}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {v === "all" ? "すべて" : v === "skill" ? "スキル" : "プロンプト"}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleMine}
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              mine
+                ? "border-brand-600 bg-brand-600 text-white"
+                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            自分の投稿のみ
+          </button>
+
+          <div className="relative min-w-[220px] flex-1">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="タイトル・説明文を検索"
+              className="w-full rounded-lg border border-slate-200 py-1.5 pl-9 pr-3 text-sm focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            />
+          </div>
+
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-600 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <TagFilterBar tags={tags} selected={selectedTagIds} onChange={setSelectedTagIds} />
+      </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {loading ? (
         <p className="text-sm text-slate-400">読み込み中...</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-400">
+        <p className="rounded-xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-400">
           {mine ? "まだ投稿がありません。" : "該当する投稿が見つかりませんでした。"}
         </p>
       ) : (

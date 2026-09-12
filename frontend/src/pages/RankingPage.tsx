@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ItemCard from "../components/ItemCard";
+import { BarsIcon } from "../components/icons";
 import { api } from "../lib/api";
 import type { Item, RankingPeriod } from "../lib/types";
 
@@ -28,16 +29,21 @@ export default function RankingPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold text-slate-900">ランキング</h1>
+      <div className="mb-6 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+          <BarsIcon className="h-4 w-4" />
+        </div>
+        <h1 className="text-xl font-bold text-slate-900">ランキング</h1>
+      </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex overflow-hidden rounded-lg border border-slate-300">
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-card">
+        <div className="flex overflow-hidden rounded-lg border border-slate-200">
           {(["all", "skill", "prompt"] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setType(v)}
-              className={`px-3 py-1.5 text-sm font-medium ${
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                 type === v ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -45,13 +51,13 @@ export default function RankingPage() {
             </button>
           ))}
         </div>
-        <div className="flex overflow-hidden rounded-lg border border-slate-300">
+        <div className="flex overflow-hidden rounded-lg border border-slate-200">
           {PERIODS.map((p) => (
             <button
               key={p.value}
               type="button"
               onClick={() => setPeriod(p.value)}
-              className={`px-3 py-1.5 text-sm font-medium ${
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                 period === p.value ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
               }`}
             >
@@ -66,7 +72,9 @@ export default function RankingPage() {
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-400">この期間の実績はまだありません。</p>
+        <p className="rounded-xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-400">
+          この期間の実績はまだありません。
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (

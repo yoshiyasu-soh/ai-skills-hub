@@ -1,7 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 import Header from "./components/Header";
+import LogoMark from "./components/LogoMark";
 import EditItemPage from "./pages/EditItemPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import GuidePage from "./pages/GuidePage";
 import HomePage from "./pages/HomePage";
 import ItemDetailPage from "./pages/ItemDetailPage";
 import PostItemPage from "./pages/PostItemPage";
@@ -13,18 +15,24 @@ export default function App() {
   const { loading, error } = useUser();
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-slate-400">読み込み中...</div>;
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3">
+        <LogoMark className="h-9 w-9 animate-pulse" />
+        <p className="text-sm text-slate-400">読み込み中...</p>
+      </div>
+    );
   }
 
   if (error) {
     const isGuestForbidden = error.includes("guest accounts are not allowed");
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
-        <p className="text-lg font-semibold text-red-600">
+      <div className="flex h-screen flex-col items-center justify-center gap-3 px-4 text-center">
+        <LogoMark className="mb-2 h-9 w-9 opacity-60" />
+        <p className="text-lg font-semibold text-slate-900">
           {isGuestForbidden ? "このアプリはご利用いただけません" : "認証情報の取得に失敗しました"}
         </p>
         {isGuestForbidden ? (
-          <p className="text-sm text-slate-500">
+          <p className="max-w-sm text-sm text-slate-500">
             このアプリはメンバー(社員)アカウント専用です。ゲストアカウントでのご利用はできません。
           </p>
         ) : (
@@ -38,9 +46,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-50">
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/items/:id" element={<ItemDetailPage />} />
@@ -49,6 +57,8 @@ export default function App() {
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/users/:email" element={<UserProfilePage />} />
+          <Route path="/guide/skills" element={<GuidePage topic="skill" />} />
+          <Route path="/guide/prompts" element={<GuidePage topic="prompt" />} />
         </Routes>
       </main>
     </div>
