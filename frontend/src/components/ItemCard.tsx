@@ -81,7 +81,7 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
         </Link>
         <span className="flex items-center gap-1 tabular-nums">
           <DownloadIcon className="h-3.5 w-3.5" />
-          {item.periodCount !== undefined ? `${item.periodCount}件(期間内)` : `${item.usageCount}件`}
+          {item.periodCount !== undefined ? `${item.periodCount} users (期間内)` : `${item.usageCount} users`}
         </span>
       </div>
     </div>

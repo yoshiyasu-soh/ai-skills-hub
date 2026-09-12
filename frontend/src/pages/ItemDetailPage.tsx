@@ -193,7 +193,7 @@ export default function ItemDetailPage() {
             >
               <DownloadIcon className="h-4 w-4" />
               ダウンロード
-              <span className="tabular-nums opacity-80">({item.usageCount}件)</span>
+              <span className="tabular-nums opacity-80">({item.usageCount} users)</span>
             </a>
           ) : (
             <>
@@ -204,7 +204,7 @@ export default function ItemDetailPage() {
               >
                 <CopyIcon className="h-4 w-4" />
                 クリップボードにコピー
-                <span className="tabular-nums opacity-80">({item.usageCount}件)</span>
+                <span className="tabular-nums opacity-80">({item.usageCount} users)</span>
               </button>
               <button
                 type="button"
