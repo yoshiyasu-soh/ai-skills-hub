@@ -83,7 +83,17 @@ const USAGE_EXAMPLES = [
   },
 ];
 
+type ClientKind = "code" | "desktop";
+
+const CLIENT_TABS: { key: ClientKind; label: string }[] = [
+  { key: "code", label: "Claude Code" },
+  { key: "desktop", label: "Claude Desktop" },
+];
+
 export default function McpGuidePage() {
+  const [client, setClient] = useState<ClientKind>("code");
+  const isCode = client === "code";
+
   return (
     <div className="mx-auto max-w-3xl">
       <Link to="/" className="mb-5 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
@@ -97,16 +107,32 @@ export default function McpGuidePage() {
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">MCP連携</p>
-          <h1 className="text-xl font-bold text-slate-900">Claude Codeから話しかけて使う</h1>
+          <h1 className="text-xl font-bold text-slate-900">Claudeに話しかけて使う</h1>
         </div>
       </div>
 
-      <p className="mb-8 max-w-prose text-sm leading-relaxed text-slate-600">
-        AI Skills Hubは、MCP(Model Context Protocol)という仕組みを使って、Claude Codeから直接
-        呼び出せるようになっています。一度つないでおけば、ブラウザでこのサイトを開かなくても、
-        Claude Codeに話しかけるだけでスキル・プロンプトを検索したり、中身を確認したり、
+      <p className="mb-6 max-w-prose text-sm leading-relaxed text-slate-600">
+        AI Skills Hubは、MCP(Model Context Protocol)という仕組みを使って、Claude Code /
+        Claude Desktop から直接呼び出せるようになっています。一度つないでおけば、ブラウザでこのサイトを
+        開かなくても、Claudeに話しかけるだけでスキル・プロンプトを検索したり、中身を確認したり、
         スキルをそのまま手元にインストールしたりできます。
       </p>
+
+      {/* クライアント選択タブ */}
+      <div className="mb-8 flex gap-2 rounded-lg border border-slate-200 bg-white p-1 shadow-card">
+        {CLIENT_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setClient(tab.key)}
+            className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
+              client === tab.key ? "bg-brand-600 text-white" : "text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {/* 事前準備 */}
       <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5 shadow-card">
@@ -114,105 +140,215 @@ export default function McpGuidePage() {
           <InfoIcon className="h-3.5 w-3.5" />
           事前に必要なもの
         </p>
-        <ul className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700">
-          <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
-            パソコンに <strong className="font-semibold">Claude Code</strong> がインストール済みであること
-            (未導入の場合は情報システム部門・導入担当にお問い合わせください)
-          </li>
-          <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
-            AI Skills Hub にいつも使っているアカウント(会社のメールアドレス)でログインできること
-          </li>
-        </ul>
+        {isCode ? (
+          <ul className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700">
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+              パソコンに <strong className="font-semibold">Claude Code</strong> がインストール済みであること
+              (未導入の場合は情報システム部門・導入担当にお問い合わせください)
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+              AI Skills Hub にいつも使っているアカウント(会社のメールアドレス)でログインできること
+            </li>
+          </ul>
+        ) : (
+          <ul className="flex flex-col gap-2 text-sm leading-relaxed text-slate-700">
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+              パソコンに <strong className="font-semibold">Claude Desktop</strong> アプリがインストール済みであること
+              (未導入の場合は情報システム部門・導入担当にお問い合わせください)
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+              「カスタムコネクタ」機能が使えるプラン(Pro/Max/Team/Enterprise等)でログインしていること。
+              使えない場合は管理者にご確認ください
+            </li>
+            <li className="flex gap-2">
+              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+              AI Skills Hub にいつも使っているアカウント(会社のメールアドレス)でログインできること
+            </li>
+          </ul>
+        )}
       </section>
 
       {/* 接続手順 */}
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-bold text-slate-900">接続する(最初の1回だけ)</h2>
 
-        <div className="flex flex-col gap-5">
-          <div className="flex gap-3">
-            <StepNumber n={1} />
-            <div className="flex-1">
-              <p className="mb-1.5 text-sm font-semibold text-slate-900">
-                「ターミナル」を開く
-              </p>
-              <p className="mb-2 text-sm leading-relaxed text-slate-600">
-                ターミナルとは、コマンド(文字の命令)を打ち込んで操作する黒っぽい画面のことです。
-                普段Claude Codeを起動しているときに使っている画面がそれです。Claude Codeを起動していない場合は、
-                まずいつも通りClaude Codeを起動してください。
-              </p>
+        {isCode ? (
+          <div className="flex flex-col gap-5">
+            <div className="flex gap-3">
+              <StepNumber n={1} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  「ターミナル」を開く
+                </p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  ターミナルとは、コマンド(文字の命令)を打ち込んで操作する黒っぽい画面のことです。
+                  普段Claude Codeを起動しているときに使っている画面がそれです。Claude Codeを起動していない場合は、
+                  まずいつも通りClaude Codeを起動してください。
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <StepNumber n={2} />
-            <div className="flex-1">
-              <p className="mb-1.5 text-sm font-semibold text-slate-900">
-                下のコマンドをそのままコピーして、ターミナルに貼り付けてEnterキーを押す
-              </p>
-              <p className="mb-2 text-sm leading-relaxed text-slate-600">
-                右の「コピー」ボタンを押すとコマンド全体がコピーされます。ターミナルの画面をクリックしてから、
-                貼り付け(Windowsは右クリックまたは Ctrl+V、Macは Cmd+V)してEnterキーを押してください。
-              </p>
-              <CopyableCommand command={`claude mcp add --transport http ${MCP_SERVER_NAME} ${MCP_URL}`} />
+            <div className="flex gap-3">
+              <StepNumber n={2} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  下のコマンドをそのままコピーして、ターミナルに貼り付けてEnterキーを押す
+                </p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  右の「コピー」ボタンを押すとコマンド全体がコピーされます。ターミナルの画面をクリックしてから、
+                  貼り付け(Windowsは右クリックまたは Ctrl+V、Macは Cmd+V)してEnterキーを押してください。
+                </p>
+                <CopyableCommand command={`claude mcp add --transport http ${MCP_SERVER_NAME} ${MCP_URL}`} />
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <StepNumber n={3} />
-            <div className="flex-1">
-              <p className="mb-1.5 text-sm font-semibold text-slate-900">
-                Claude Codeを起動し直し、認証を行う
-              </p>
-              <p className="mb-2 text-sm leading-relaxed text-slate-600">
-                Claude Codeを一度終了し、もう一度起動してください。起動後、下のコマンドを実行すると、
-                自動でブラウザが開きます。
-              </p>
-              <CopyableCommand command={`claude mcp login ${MCP_SERVER_NAME}`} />
+            <div className="flex gap-3">
+              <StepNumber n={3} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  Claude Codeを起動し直し、認証を行う
+                </p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  Claude Codeを一度終了し、もう一度起動してください。起動後、下のコマンドを実行すると、
+                  自動でブラウザが開きます。
+                </p>
+                <CopyableCommand command={`claude mcp login ${MCP_SERVER_NAME}`} />
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <StepNumber n={4} />
-            <div className="flex-1">
-              <p className="mb-1.5 text-sm font-semibold text-slate-900">
-                ブラウザで画面の指示に従ってログイン・許可を行う
-              </p>
-              <p className="text-sm leading-relaxed text-slate-600">
-                以下の順番で画面が進みます。すべて許可・ログインして問題ありません。
-              </p>
-              <ol className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-slate-600">
-                <li className="flex items-start gap-1.5">
-                  <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  いつも使っている社用メールアドレスとパスワードでログイン画面にサインインする
-                  (すでにログイン済みの場合はこの画面は出ません)
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  「AI Skills Hub」への接続を確認する画面が出たら「Authorize」(許可)ボタンを押す
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  さらに、Workerへのアクセスを確認する画面が出た場合も「Allow」(許可)ボタンを押す
-                </li>
-              </ol>
+            <div className="flex gap-3">
+              <StepNumber n={4} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  ブラウザで画面の指示に従ってログイン・許可を行う
+                </p>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  以下の順番で画面が進みます。すべて許可・ログインして問題ありません。
+                </p>
+                <ol className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-slate-600">
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    いつも使っている社用メールアドレスとパスワードでログイン画面にサインインする
+                    (すでにログイン済みの場合はこの画面は出ません)
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    「AI Skills Hub」への接続を確認する画面が出たら「Authorize」(許可)ボタンを押す
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    さらに、Workerへのアクセスを確認する画面が出た場合も「Allow」(許可)ボタンを押す
+                  </li>
+                </ol>
+              </div>
             </div>
-          </div>
 
-          <div className="flex gap-3">
-            <StepNumber n={5} />
-            <div className="flex-1">
-              <p className="mb-1.5 text-sm font-semibold text-slate-900">つながったか確認する</p>
-              <p className="mb-2 text-sm leading-relaxed text-slate-600">
-                Claude Codeの入力欄で下のコマンドを実行し、<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ai-skills-hub</code> が
-                「Connected」と表示されれば接続完了です。以降、毎回この作業をする必要はありません。
-              </p>
-              <CopyableCommand command="/mcp" />
+            <div className="flex gap-3">
+              <StepNumber n={5} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">つながったか確認する</p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  Claude Codeの入力欄で下のコマンドを実行し、<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">ai-skills-hub</code> が
+                  「Connected」と表示されれば接続完了です。以降、毎回この作業をする必要はありません。
+                </p>
+                <CopyableCommand command="/mcp" />
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <div className="flex gap-3">
+              <StepNumber n={1} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">Claude Desktopの設定画面を開く</p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  Claude Desktopを起動し、キーボードで <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">Ctrl + ,</code>{" "}
+                  (Macは <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">Cmd + ,</code>)を押します。
+                  うまくいかない場合は、左上のメニューアイコン →「File」(ファイル)→「Settings」(設定)を選んでください。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <StepNumber n={2} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  左側のメニューから「Connectors」(コネクタ)を選ぶ
+                </p>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  設定画面が開いたら、左側の一覧から「Connectors」をクリックします。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <StepNumber n={3} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  画面を一番下までスクロールし、「Add custom connector」(カスタムコネクタを追加)をクリックする
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <StepNumber n={4} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  名前とURLを入力して「Add」(追加)を押す
+                </p>
+                <p className="mb-2 text-sm leading-relaxed text-slate-600">
+                  「Name」(名前)欄には好きな名前(例: <span className="font-mono">AI Skills Hub</span>)を、
+                  「URL」欄には下記をそのままコピーして貼り付けてください。「Advanced settings」
+                  (詳細設定)は空欄のままで構いません。
+                </p>
+                <CopyableCommand command={MCP_URL} />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <StepNumber n={5} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">
+                  ブラウザで画面の指示に従ってログイン・許可を行う
+                </p>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  「Add」を押すとブラウザが自動的に開きます。以下の順番で進めてください。
+                </p>
+                <ol className="mt-2 flex flex-col gap-1.5 text-sm leading-relaxed text-slate-600">
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    いつも使っている社用メールアドレスとパスワードでログイン画面にサインインする
+                    (すでにログイン済みの場合はこの画面は出ません)
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    「AI Skills Hub」への接続を確認する画面が出たら「Authorize」(許可)ボタンを押す
+                  </li>
+                  <li className="flex items-start gap-1.5">
+                    <ChevronRightIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    さらに、Workerへのアクセスを確認する画面が出た場合も「Allow」(許可)ボタンを押す
+                  </li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <StepNumber n={6} />
+              <div className="flex-1">
+                <p className="mb-1.5 text-sm font-semibold text-slate-900">つながったか確認する</p>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  Claude Desktopの設定画面に戻り、「AI Skills Hub」の状態が「Connected」(接続済み)に
+                  なっていれば完了です。チャット画面の入力欄の下にあるツールアイコンから、
+                  接続したツールが使えるようになっているかも確認できます。
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* うまくいかないとき */}
@@ -229,7 +365,7 @@ export default function McpGuidePage() {
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-bold text-slate-900">使い方</h2>
         <p className="mb-4 max-w-prose text-sm leading-relaxed text-slate-600">
-          むずかしいコマンドを覚える必要はありません。Claude Codeに、いつも通り日本語で話しかけるだけです。
+          むずかしいコマンドを覚える必要はありません。Claudeに、いつも通り日本語で話しかけるだけです。
           「AI Skills Hub」という単語を含めて頼むと、確実にこのサイトの情報を使って答えてくれます。
         </p>
 
@@ -258,6 +394,11 @@ export default function McpGuidePage() {
           スキル置き場(<code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-xs">.claude/skills/</code>{" "}
           など)にファイルを作成・登録するところまで行ってくれます。ダウンロード操作やファイルのコピーを
           自分で行う必要はありません。
+        </p>
+        <p className="mb-3 text-xs leading-relaxed text-slate-500">
+          ※この「ファイルへの自動保存」は、パソコン上のファイルを直接操作できるClaude Code
+          ならではの動作です。Claude Desktopでも検索・閲覧(内容の確認)は同様にできますが、
+          ファイルへの保存は行われないため、必要な場合は表示された内容を手元にコピーしてください。
         </p>
         <div className="mb-3 rounded-lg bg-slate-50 p-3">
           <p className="mb-1 text-xs font-semibold text-slate-600">話しかけ方の例</p>
