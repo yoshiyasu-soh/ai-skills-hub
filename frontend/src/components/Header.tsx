@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useUser } from "../lib/UserContext";
 import LogoMark from "./LogoMark";
+import NotificationBell from "./NotificationBell";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-2 text-sm font-medium ${
@@ -39,6 +40,7 @@ export default function Header() {
           </NavLink>
           {user && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
+              <NotificationBell />
               <NavLink to={`/users/${encodeURIComponent(user.email)}`} className="hidden hover:underline sm:inline">
                 {user.displayName}
               </NavLink>

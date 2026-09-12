@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { fetchItemRow, parseTagIds, toItemDTOs } from "../lib/items";
 import { slugify } from "../lib/slug";
+import { markItemSeen, markItemWatched } from "../lib/watches";
 import type { AuthUser, Env, ItemRow, SortOption } from "../types";
 
 type AppContext = Context<{ Bindings: Env; Variables: { user: AuthUser } }>;
@@ -221,6 +222,8 @@ items.get("/:id", async (c) => {
   const row = await fetchItemRow(c.env.DB, c.req.param("id"));
   if (!row) return c.json({ error: "not_found" }, 404);
   const [dto] = await toItemDTOs(c.env.DB, [row], user.email);
+  // 「更新あり」を一度表示した後、詳細を見た時点で既読にする
+  await markItemSeen(c.env.DB, user.email, row.id, row.version);
   return c.json({ item: dto });
 });
 
@@ -324,6 +327,8 @@ items.get("/:id/download", async (c) => {
       c.env.DB.prepare("UPDATE items SET usage_count = usage_count + 1 WHERE id = ?").bind(id),
     ]);
   }
+  // 最新の中身を実際に受け取った操作なので、保留中の「更新あり」があれば解消する
+  await markItemWatched(c.env.DB, user.email, item.author_email, id, item.version, { markSeen: true });
 
   const fileName = item.file_name ?? "skill.zip";
   return new Response(obj.body, {
@@ -339,10 +344,13 @@ items.get("/:id/download", async (c) => {
 items.post("/:id/copy", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const item = await c.env.DB.prepare("SELECT id, usage_count, author_email FROM items WHERE id = ?")
+  const item = await c.env.DB.prepare("SELECT id, usage_count, author_email, version FROM items WHERE id = ?")
     .bind(id)
-    .first<{ id: string; usage_count: number; author_email: string }>();
+    .first<{ id: string; usage_count: number; author_email: string; version: string }>();
   if (!item) return c.json({ error: "not_found" }, 404);
+
+  // 最新の中身を実際に受け取った操作なので、保留中の「更新あり」があれば解消する
+  await markItemWatched(c.env.DB, user.email, item.author_email, id, item.version, { markSeen: true });
 
   if (!(await shouldCountUsage(c.env.DB, id, user.email, item.author_email, "copy"))) {
     return c.json({ usageCount: item.usage_count });
@@ -360,7 +368,9 @@ items.post("/:id/copy", async (c) => {
 items.post("/:id/favorite", async (c) => {
   const user = c.get("user");
   const id = c.req.param("id");
-  const exists = await c.env.DB.prepare("SELECT id FROM items WHERE id = ?").bind(id).first();
+  const exists = await c.env.DB.prepare("SELECT id, author_email, version FROM items WHERE id = ?")
+    .bind(id)
+    .first<{ id: string; author_email: string; version: string }>();
   if (!exists) return c.json({ error: "not_found" }, 404);
 
   const result = await c.env.DB.prepare(
@@ -372,6 +382,9 @@ items.post("/:id/favorite", async (c) => {
   if (result.meta.changes > 0) {
     await c.env.DB.prepare("UPDATE items SET favorite_count = favorite_count + 1 WHERE id = ?").bind(id).run();
   }
+  // お気に入り登録=この項目を追いたいという意思表示。中身を確認したわけではないので、
+  // 保留中の「更新あり」はそのままにし、未購読の場合のみ現在バージョンを基準として登録する
+  await markItemWatched(c.env.DB, user.email, exists.author_email, id, exists.version, { markSeen: false });
 
   const row = await c.env.DB.prepare("SELECT favorite_count FROM items WHERE id = ?").bind(id).first<{ favorite_count: number }>();
   return c.json({ favorited: true, favoriteCount: row?.favorite_count ?? 0 });

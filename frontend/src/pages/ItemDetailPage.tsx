@@ -151,6 +151,12 @@ export default function ItemDetailPage() {
         <span>更新: {new Date(item.updatedAt).toLocaleString("ja-JP")}</span>
       </div>
 
+      {item.hasUpdate && (
+        <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+          前回ご覧になってからバージョンが更新されています(v{item.version})。
+        </div>
+      )}
+
       {item.tags.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1">
           {item.tags.map((tag) => (

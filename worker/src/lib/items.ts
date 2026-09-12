@@ -20,6 +20,7 @@ export interface ItemDTO {
   tags: { id: number; name: string; label: string }[];
   isFavorited: boolean;
   isOwner: boolean;
+  hasUpdate: boolean;
 }
 
 type RowWithAuthor = ItemRow & { author_display_name?: string };
@@ -54,6 +55,13 @@ export async function toItemDTOs(
     .bind(viewerEmail, ...ids)
     .all<{ item_id: string }>();
 
+  const watchRowsResult = await db
+    .prepare(
+      `SELECT item_id, last_seen_version FROM item_watches WHERE user_email = ? AND item_id IN (${idPlaceholders})`,
+    )
+    .bind(viewerEmail, ...ids)
+    .all<{ item_id: string; last_seen_version: string }>();
+
   const tagsByItem = new Map<string, { id: number; name: string; label: string }[]>();
   for (const t of tagRowsResult.results ?? []) {
     const list = tagsByItem.get(t.item_id) ?? [];
@@ -62,6 +70,7 @@ export async function toItemDTOs(
   }
 
   const favSet = new Set((favRowsResult.results ?? []).map((f) => f.item_id));
+  const lastSeenByItem = new Map((watchRowsResult.results ?? []).map((w) => [w.item_id, w.last_seen_version]));
 
   return rows.map((r) => ({
     id: r.id,
@@ -83,6 +92,7 @@ export async function toItemDTOs(
     tags: tagsByItem.get(r.id) ?? [],
     isFavorited: favSet.has(r.id),
     isOwner: r.author_email === viewerEmail,
+    hasUpdate: lastSeenByItem.has(r.id) && lastSeenByItem.get(r.id) !== r.version,
   }));
 }
 

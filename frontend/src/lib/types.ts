@@ -37,7 +37,17 @@ export interface Item {
   tags: ItemTagRef[];
   isFavorited: boolean;
   isOwner: boolean;
+  hasUpdate: boolean;
   periodCount?: number;
+}
+
+export interface VersionNotification {
+  itemId: string;
+  itemType: ItemType;
+  title: string;
+  previousVersion: string;
+  currentVersion: string;
+  updatedAt: string;
 }
 
 export interface User {

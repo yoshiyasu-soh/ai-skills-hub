@@ -24,6 +24,12 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
           >
             {isSkill ? "スキル" : "プロンプト"}
           </span>
+          <span className="text-xs text-slate-400">v{item.version}</span>
+          {item.hasUpdate && (
+            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600">
+              更新あり
+            </span>
+          )}
         </div>
         <button
           type="button"

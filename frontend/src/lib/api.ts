@@ -1,4 +1,4 @@
-import type { Item, RankingPeriod, SortOption, Tag, User } from "./types";
+import type { Item, RankingPeriod, SortOption, Tag, User, VersionNotification } from "./types";
 
 const API_BASE = "/api";
 
@@ -111,6 +111,11 @@ export const api = {
     get: (email: string) => request<{ user: User }>(`/users/${encodeURIComponent(email)}`),
     sync: (email: string) =>
       request<{ user: User; synced: boolean }>(`/users/${encodeURIComponent(email)}/sync`, { method: "POST" }),
+  },
+
+  notifications: {
+    list: () => request<{ notifications: VersionNotification[]; unreadCount: number }>("/notifications"),
+    readAll: () => request<{ ok: true }>("/notifications/read-all", { method: "POST" }),
   },
 };
 
