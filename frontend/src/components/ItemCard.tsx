@@ -16,7 +16,7 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
       {/* カード全体を1枚のリンクとして扱う(下の各インタラクティブ要素は relative+z-10 で手前に出して個別にクリックできるようにしている) */}
       <Link to={`/items/${item.id}`} className="absolute inset-0 z-0 rounded-xl" aria-label={item.title} />
 
-      <div className="relative z-10 mb-3 flex items-start justify-between gap-2">
+      <div className="mb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           {rank !== undefined && <span className="text-sm font-bold tabular-nums text-slate-400">#{rank}</span>}
           <div
@@ -46,21 +46,21 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
         </button>
       </div>
 
-      <p className="relative z-10 mb-1 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900 group-hover:text-brand-700">
+      <p className="mb-1 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900 group-hover:text-brand-700">
         {item.title}
       </p>
-      <p className="relative z-10 mb-3 line-clamp-2 flex-1 text-sm leading-relaxed text-slate-500">
+      <p className="mb-3 line-clamp-2 flex-1 text-sm leading-relaxed text-slate-500">
         {item.summary || "説明はまだありません"}
       </p>
 
       {item.hasUpdate && (
-        <span className="relative z-10 mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600">
+        <span className="mb-2 inline-flex w-fit items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-600">
           更新あり
         </span>
       )}
 
       {item.tags.length > 0 && (
-        <div className="relative z-10 mb-3 flex flex-wrap gap-1">
+        <div className="mb-3 flex flex-wrap gap-1">
           {item.tags.slice(0, 4).map((tag) => (
             <span key={tag.id} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
               #{tag.label}
@@ -69,7 +69,7 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
         </div>
       )}
 
-      <div className="relative z-10 flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-slate-400">
+      <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 text-xs text-slate-400">
         <Link
           to={`/users/${encodeURIComponent(item.authorEmail)}`}
           className="relative z-10 flex items-center gap-1.5 hover:text-slate-600 hover:underline"
