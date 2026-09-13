@@ -22,7 +22,7 @@ MCPクライアントからのOAuth対応は、**Cloudflare Access の「MCP サ
 Claude Code / Cowork
         │  ① MCPポータルへOAuth接続(ブラウザでEntra IDログイン)
         ▼
-MCPサーバーポータル (例: https://mcp.soh.jp/mcp) ★接続先は末尾 /mcp が必要
+MCPサーバーポータル (例: https://mcp.example.com/mcp) ★接続先は末尾 /mcp が必要
   = 専用の Access Application (マネージドOAuth 有効)
         │  ② ポータル→バックエンドへ、OAuth認証方式で中継(ユーザーの代理として)
         ▼
@@ -40,7 +40,7 @@ Access内部では、実は**3つの Access Application** が関与します:
 | アプリ | 役割 | 作成方法 |
 |---|---|---|
 | `ai-skills-hub - Cloudflare Workers` | サイト全体を保護(既存) | 手動作成済み |
-| `AI Skills Hub MCP`(type: `mcp_portal`) | ポータル本体(`mcp.soh.jp`) | MCPポータル作成時に自動生成 |
+| `AI Skills Hub MCP`(type: `mcp_portal`) | ポータル本体(`mcp.example.com`) | MCPポータル作成時に自動生成 |
 | `AI Skills Hub`(type: `mcp`) | 個別サーバーのリソース表現 | MCPサーバー登録時に自動生成、**ダッシュボードの「アプリケーション」一覧には出てこない** |
 
 3つ目の「`mcp` タイプ」アプリは隠れた存在で、これが今回の不具合の温床でした(詳細後述)。
@@ -76,11 +76,11 @@ Access内部では、実は**3つの Access Application** が関与します:
 1. Zero Trust ダッシュボード › **Access コントロール › MCP ポータル**(ベータ)を開き、
    「サーバー ポータルを追加」をクリックする。
 2. **基本情報**: ポータル名(例 `AI Skills Hub MCP`)、ポータルIDは自動入力のままでOK。
-3. **カスタムドメイン**: サブドメイン(例 `mcp`)+ 既存ドメイン(例 `soh.jp`)を選択する。
+3. **カスタムドメイン**: サブドメイン(例 `mcp`)+ 既存ドメイン(例 `example.com`)を選択する。
    DNSレコードは自動作成される。
 4. **Cloudflare Gatewayを経由してルーティング**: オフのままでOK。
 5. **コードモード**(ベータ): 「オフ」または「オプトイン」。今回は不要なのでどちらでも良い。
-6. **Accessポリシー**: 「現在のポリシーを追加」から、既存アプリと同じポリシー(例 `outlook.com`)
+6. **Accessポリシー**: 「現在のポリシーを追加」から、既存アプリと同じポリシー(例 `社内ドメイン`)
    を選択する(新規に同条件のポリシーを作らず、一元管理する)。
 7. **マネージドOAuth**を **オン** にする。「localhostクライアントを許可」
    「ループバッククライアントを許可」もオンにする(Claude Code CLIのローカルコールバックに対応)。
@@ -90,7 +90,7 @@ Access内部では、実は**3つの Access Application** が関与します:
 
 1. **サーバー名**: 例 `AI Skills Hub`
 2. **HTTP URL**: `https://<Workerの公開ドメイン>/api/mcp`
-   (例: `https://ai-skills-hub.yoshiyasu.workers.dev/api/mcp`)
+   (例: `https://ai-skills-hub.example-team.workers.dev/api/mcp`)
 3. **認証の種類**: **「OAuth」を選択する**(「カスタムヘッダー」は選ばない。Worker側の
    `authMiddleware` は JWT の `email` クレームを必須にしており、Service Token等の
    カスタムヘッダー認証では実ユーザーのメールアドレスが得られず機能しない)。
@@ -229,10 +229,10 @@ PUT /accounts/{account_id}/access/apps/{ポータル本体のAccessアプリのI
 **接続先URLは、ポータルのドメイン直下ではなく、末尾に `/mcp` を付けたパスです。**
 
 ```bash
-claude mcp add --transport http ai-skills-hub https://mcp.soh.jp/mcp
+claude mcp add --transport http ai-skills-hub https://mcp.example.com/mcp
 ```
 
-(`https://mcp.soh.jp` のみだと `MCP endpoint not found` エラーになる)
+(`https://mcp.example.com` のみだと `MCP endpoint not found` エラーになる)
 
 初回接続時にブラウザが開き、Entra ID のログイン画面(Access経由)→バックエンドへの
 アクセス同意画面(Allow)の順で進む。完了後、Claude Code側で `/mcp` を実行し
@@ -241,7 +241,7 @@ claude mcp add --transport http ai-skills-hub https://mcp.soh.jp/mcp
 ## Claude Desktop / claude.ai / Cowork から接続する
 
 Claude Desktopの場合: 設定(Ctrl+, / Cmd+,)› Connectors › 画面下部の
-「Add custom connector」から、名前と `https://mcp.soh.jp/mcp` を入力して追加する。
+「Add custom connector」から、名前と `https://mcp.example.com/mcp` を入力して追加する。
 claude.ai(ブラウザ版)・モバイル・Coworkも、それぞれのコネクタ追加画面から同じURLを
 指定すれば同様に接続できる(「不具合3」の対処が完了している前提)。
 
