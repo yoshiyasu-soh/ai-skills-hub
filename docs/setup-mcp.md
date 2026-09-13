@@ -8,7 +8,7 @@ MCPクライアントから直接、投稿されているスキル・プロン�
 
 本手順は実際に構築・接続確認まで完了した際の記録です。**Cloudflare Access の
 「MCP サーバー ポータル」機能はベータ版であり、ダッシュボードだけでは完結しない
-既知の不具合が複数あります。** 本手順ではそれらの回避策(Cloudflare API での直接設定)も
+既知の問題が複数あります。** 本手順ではそれらの回避策(Cloudflare API での直接設定)も
 含めて記載しています。
 
 ## アーキテクチャ
@@ -43,7 +43,7 @@ Access内部では、実は**3つの Access Application** が関与します:
 | `AI Skills Hub MCP`(type: `mcp_portal`) | ポータル本体(`mcp.example.com`) | MCPポータル作成時に自動生成 |
 | `AI Skills Hub`(type: `mcp`) | 個別サーバーのリソース表現 | MCPサーバー登録時に自動生成、**ダッシュボードの「アプリケーション」一覧には出てこない** |
 
-3つ目の「`mcp` タイプ」アプリは隠れた存在で、これが今回の不具合の温床でした(詳細後述)。
+3つ目の「`mcp` タイプ」アプリは隠れた存在で、これが今回の問題の温床でした(詳細後述)。
 
 ## 提供しているツール(読み取り専用)
 
@@ -109,18 +109,19 @@ Access内部では、実は**3つの Access Application** が関与します:
 ここまではダッシュボードの表示通りに進めれば問題なく完了します。**問題はこの後、
 実際にMCPクライアントを接続しようとした段階から発生します。**
 
-## 既知の不具合と回避策(ベータ版・要Cloudflare API操作)
+## 既知の問題と回避策(ベータ版・要Cloudflare API操作)
 
-ダッシュボードの「サーバーを認証」ボタン(自動/DCRモードでの初回認証トリガー)は、
-**クリックしても実際には何のリクエストも送信されず、機能しません**(2026年9月時点)。
-また、自動的に発生するはずの動的クライアント登録(DCR)が、設定不足により失敗する
-経路がいくつかあります。以下、実際に踏んだ不具合と対処を順に示します。
+ダッシュボードの「サーバーを認証」ボタン(自動/DCRモードでの初回認証トリガー)をクリックしても、
+今回の環境では `last_synced` が更新されず、認証が完了しませんでした。これがボタン自体の問題
+なのか、後述の問題1・問題2のような設定不足が原因でボタンの処理自体が先に進めなかったのかは
+**切り分けられていません**。今回は原因調査より復旧を優先し、「手動の資格情報」に切り替えて
+対処しました。以下、実際に踏んだ問題と対処を順に示します。
 
 これらの操作には Cloudflare API トークン(`Access: Apps and Policies Write` 権限)が
 必要です。Claude Code / Cowork に Cloudflare 公式MCPサーバーを接続し、AI経由で
 実行することも可能です(本セットアップでもその方法で解決しました)。
 
-### 不具合1: 個別サーバー用の隠れたAccessアプリに oauth_configuration が無い
+### 問題1: 個別サーバー用の隠れたAccessアプリに oauth_configuration が無い
 
 MCPサーバーを登録すると、type: `mcp` の Access Application が自動生成されますが
 (ダッシュボードのアプリケーション一覧には表示されない)、**このアプリには
@@ -151,10 +152,10 @@ PUT /accounts/{account_id}/access/apps/{mcp型アプリのID}
 実ホスト名は `allowed_uris` に明示的に追加しないと `redirect_uri is not allowed by the
 account configuration` エラーになる。
 
-### 不具合2: バックエンドのOAuthクライアントは client_secret_basic でなければならない
+### 問題2: バックエンドのOAuthクライアントは client_secret_basic でなければならない
 
-MCPサーバーの「認証」タブで「手動の資格情報」を使う場合(自動/DCRのボタンが機能しない
-ため、実質こちらしか選択肢がない)、**Cloudflare Access がポータル→バックエンド間の
+MCPサーバーの「認証」タブで「手動の資格情報」を使う場合(前述の通り「サーバーを認証」
+ボタンでは復旧できなかったため、今回はこちらで対処した)、**Cloudflare Access がポータル→バックエンド間の
 トークン交換を行う際、登録したクライアントの `token_endpoint_auth_method` に関わらず、
 常に HTTP Basic認証(`client_secret_basic`)でクライアントシークレットを送信する**。
 そのため、`client_secret_post`(または `none`)で登録したクライアントを設定すると、
@@ -204,7 +205,7 @@ PUT /accounts/{account_id}/access/ai-controls/mcp/servers/{server_id}
 上記2点を修正すると、MCPサーバーのステータスが `status: "ready"` になり、
 `tools` 配列にツール一覧が入るようになる(`GET /accounts/{account_id}/access/ai-controls/mcp/servers/{id}` で確認可能)。
 
-### 不具合3: Claude Desktop / claude.ai / モバイル / Cowork のコールバックURLが未許可
+### 問題3: Claude Desktop / claude.ai / モバイル / Cowork のコールバックURLが未許可
 
 Claude Code(CLI)はローカルの `http://localhost:<ポート>/callback` を使うため
 `allow_any_on_localhost` でカバーされるが、**Claude Desktop・claude.ai(ブラウザ)・
@@ -252,7 +253,7 @@ claude mcp add --transport http ai-skills-hub https://mcp.example.com/mcp
 Claude Desktopの場合: 設定(Ctrl+, / Cmd+,)› Connectors › 画面下部の
 「Add custom connector」から、名前と `https://mcp.example.com/mcp` を入力して追加する。
 claude.ai(ブラウザ版)・モバイル・Coworkも、それぞれのコネクタ追加画面から同じURLを
-指定すれば同様に接続できる(「不具合3」の対処が完了している前提)。
+指定すれば同様に接続できる(「問題3」の対処が完了している前提)。
 
 ## ローカルでの動作確認(参考)
 
@@ -276,6 +277,6 @@ curl -X POST http://localhost:8787/api/mcp \
 - 投稿・編集・お気に入り登録・DL/コピーのカウント連携など、書き込み系ツールの追加
   (誤操作防止のため、確認ステップや権限スコープの設計が別途必要)
 - `list_ranking` など補助的な参照ツールの追加
-- Cloudflare側でベータ機能の不具合(「既知の不具合と回避策」参照)が修正された場合、
+- Cloudflare側でベータ機能の問題(「既知の問題と回避策」参照)が修正された場合、
   ダッシュボードの「自動(推奨)」モード + 「サーバーの認証」ボタンだけで完結するように
   なる可能性がある。その際は本セクションの手動API操作は不要になる。
