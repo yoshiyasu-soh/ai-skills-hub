@@ -1,6 +1,9 @@
+import type { MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../lib/api";
+import { useToast } from "../lib/ToastContext";
 import type { Item } from "../lib/types";
-import { BoxIcon, DownloadIcon, SparkleIcon, StarIcon } from "./icons";
+import { BoxIcon, CopyIcon, DownloadIcon, SparkleIcon, StarIcon } from "./icons";
 
 interface Props {
   item: Item;
@@ -10,15 +13,36 @@ interface Props {
 
 export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
   const isSkill = item.type === "skill";
+  const { showToast } = useToast();
+
+  async function handleQuickCopy(e: MouseEvent) {
+    e.preventDefault();
+    try {
+      await navigator.clipboard.writeText(item.body);
+      showToast("プロンプトをクリップボードにコピーしました");
+    } catch {
+      showToast("クリップボードへのコピーに失敗しました");
+      return;
+    }
+    try {
+      await api.items.copy(item.id);
+    } catch {
+      // カウント更新の失敗はユーザー操作をブロックしない
+    }
+  }
 
   return (
     <div className="group relative flex flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-card-hover">
       {/* カード全体を1枚のリンクとして扱う(下の各インタラクティブ要素は relative+z-10 で手前に出して個別にクリックできるようにしている) */}
-      <Link to={`/items/${item.id}`} className="absolute inset-0 z-0 rounded-xl" aria-label={item.title} />
+      <Link
+        to={`/items/${item.id}`}
+        className="absolute inset-0 z-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
+        aria-label={item.title}
+      />
 
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          {rank !== undefined && <span className="text-sm font-bold tabular-nums text-slate-400">#{rank}</span>}
+          {rank !== undefined && <span className="text-sm font-bold tabular-nums text-slate-500">#{rank}</span>}
           <div
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${
               isSkill ? "bg-skill" : "bg-prompt"
@@ -32,18 +56,41 @@ export default function ItemCard({ item, onToggleFavorite, rank }: Props) {
             >
               {isSkill ? "Skill" : "Prompt"}
             </span>
-            <span className="font-mono text-[11px] text-slate-400">v{item.version}</span>
+            <span className="font-mono text-[11px] text-slate-500">v{item.version}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onToggleFavorite?.(item)}
-          className="relative z-10 flex items-center gap-1 rounded-md px-1.5 py-1 text-sm text-slate-400 hover:bg-amber-50 hover:text-amber-500"
-          aria-label="お気に入り切り替え"
-        >
-          <StarIcon filled={item.isFavorited} className={`h-4 w-4 ${item.isFavorited ? "text-amber-400" : ""}`} />
-          <span className="tabular-nums">{item.favoriteCount}</span>
-        </button>
+        <div className="flex items-center gap-0.5">
+          {isSkill ? (
+            <a
+              href={api.items.downloadUrl(item.id)}
+              className={`relative z-10 flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:bg-skill/10 hover:text-skill focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400`}
+              aria-label={`${item.title} をダウンロード`}
+              title="ダウンロード"
+            >
+              <DownloadIcon className="h-4 w-4" />
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => void handleQuickCopy(e)}
+              className="relative z-10 flex items-center justify-center rounded-md p-1.5 text-slate-500 hover:bg-prompt/10 hover:text-prompt focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
+              aria-label={`${item.title} をクリップボードにコピー`}
+              title="クリップボードにコピー"
+            >
+              <CopyIcon className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onToggleFavorite?.(item)}
+            className="relative z-10 flex items-center gap-1 rounded-md px-1.5 py-1 text-sm text-slate-500 hover:bg-amber-50 hover:text-amber-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
+            aria-pressed={item.isFavorited}
+            aria-label="お気に入り切り替え"
+          >
+            <StarIcon filled={item.isFavorited} className={`h-4 w-4 ${item.isFavorited ? "text-amber-400" : ""}`} />
+            <span className="tabular-nums">{item.favoriteCount}</span>
+          </button>
+        </div>
       </div>
 
       <p className="mb-1 line-clamp-2 text-[15px] font-semibold leading-snug text-slate-900 group-hover:text-brand-700">

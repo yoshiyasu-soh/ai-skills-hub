@@ -18,7 +18,8 @@ export default function TagFilterBar({ tags, selected, onChange }: Props) {
   if (tags.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-slate-500">タグで絞り込み(すべて一致):</span>
       {tags.map((tag) => {
         const active = selected.includes(tag.id);
         return (
@@ -26,7 +27,8 @@ export default function TagFilterBar({ tags, selected, onChange }: Props) {
             key={tag.id}
             type="button"
             onClick={() => toggle(tag.id)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+            aria-pressed={active}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${
               active
                 ? "border-brand-600 bg-brand-600 text-white"
                 : "border-slate-200 bg-slate-50 text-slate-600 hover:border-brand-300 hover:bg-white"
@@ -41,7 +43,7 @@ export default function TagFilterBar({ tags, selected, onChange }: Props) {
         <button
           type="button"
           onClick={() => onChange([])}
-          className="rounded-full px-3 py-1 text-xs text-slate-400 underline hover:text-slate-600"
+          className="rounded-full px-3 py-1 text-xs text-slate-500 underline hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
         >
           タグ選択をクリア
         </button>

@@ -55,7 +55,7 @@ export default function Header() {
               </NavLink>
               <a
                 href="/cdn-cgi/access/logout"
-                className="rounded-md px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-md px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               >
                 ログアウト
               </a>
